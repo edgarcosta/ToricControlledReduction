@@ -17,6 +17,8 @@
 #include <fstream>//needed?
 #include <cstring>//needed?
 
+#include <NTL/LLL.h>
+#include <NTL/ZZX.h>
 #include <NTL/vec_long.h>
 #include <NTL/mat_ZZ.h>
 #include <NTL/mat_ZZ_p.h>
@@ -70,8 +72,11 @@ class dr{
         int64_t n;
         int64_t verbose;
         bool minimal;
-        int64_t characteristic;
-        ZZ modulus;
+        // Specifications that must match with the modulus that defines R
+        int64_t p; // 0 if R = ZZ, else the characteristic of FFq
+        int64_t precision;
+        ZZX fE; // 1 if p == q else FFq.defining_polynomial()
+        ZZ modulus; // p^precision
         
 
         // Half space representation of P
@@ -100,7 +105,7 @@ class dr{
         // f_power[i] = f^i
         Vec<  map< Vec<int64_t>, R, vi64less> > f_power;
         // if needed computes f^N and adds it to the f_power list
-        void compute_f_power(int64_t N);
+        void init_f_power(int64_t N);
     
         // solve_matrix[d] represents the map
         // P_d ---> P_{d-1}^n + J_d 
@@ -124,7 +129,8 @@ class dr{
         // computes solve_*, cokernels_J_basis*, basis_dr_Y* 
         void init_solve_and_cokernels();
         //  cokernels_I_basis*
-        void cokernels_I_basis();
+        void init_cokernels_I_basis();
+        void init_cokernels_I_basis(int64_t d);
 
         
 
@@ -145,19 +151,21 @@ class dr{
         Vec< R > pi_den;
 
         // computes rho[d] and pi[d]
-        void rho_and_pi_matrices(int64_t d);
+        void init_rho_and_pi_matrices(int64_t d);
 
         // inclusion_matrices[u] is the matrix that represents:
         // I_u : J_0 + ... + J_n --> P_1 + P_2 + ... + P_{n+1}
         // where ai -- >  u * a_i \in P_{i + 1}
         map< Vec<int64_t>, Mat<int64_t>, vi64less> inclusion_matrices;
+        //compute inclusion_matrices
+        void init_inclusion_matrices();
 
         // last_reduction represents
         // M: P_1 + .... + P_{n + 1} --- > P_1 + J_2 + ... + J_n
         // (i - 1)! ai \in P^{i} ---> P_1 + J_2 +... + J_i
         Mat<R> last_reduction;
         //computes the last_reduction
-        void last_reduction();
+        void init_last_reduction();
 
 
         // projection of matrices 
@@ -165,7 +173,7 @@ class dr{
         // proj_notX :  PH^{n-1} (Y) ---> PH^{n-1} (X)^{perp}
         Mat<int64_t> proj_X, proj_notX;
         //computes  proj_X and proj_notX
-        void proj();
+        void init_proj();
 
 
 
@@ -187,19 +195,13 @@ class dr{
         void matrix_J(Mat<R> &result, int64_t d);
 
 
-        // see solve_system.h
-        void solve_system(Vec<int64_t> &B, Mat<R> &Unom, R &Udenom, const Mat<T> &T, const Vec<T> &initB);
-
-        
-
-
-        
+        void solve_system(Vec<int64_t> &B, Mat<R> &Unom, R &Udenom, const Mat<R> &T, const Vec<int64_t> &initB); 
     
 };
 
 
 template<class R>
-void dr<R>::compute_f_power(int64_t N)
+void dr<R>::init_f_power(int64_t N)
 {
     if( f_power.length() == 0)
     {
@@ -233,18 +235,156 @@ void dr<R>::compute_f_power(int64_t N)
 }
 
 template<class R>
-void cokernels_I_basis()
+void dr<R>::init_cokernels_I_basis()
 {
     for(int64_t d = 1; d < n + 1; d++)
-    {
-        Mat<T> MJ;
-        matrix_J(MJ, d);
-       //FIXME
-        //solve system over ZZ_p is broken
+        init_cokernels_I_basis(d);
+}
 
+template<class R>
+void dr<R>::init_cokernels_I_basis(int64_t d)
+{
+    assert( p != 0 );
+    //I_d = (S^* + J(f) / J(f))_d
+    Mat<R> JR;
+    Vec<int64_t> pivots;
+    int64_t i, j;
+    int64_t rank_J, dim_Sintd;
+    matrix_J(JR, d);
+    dim_Sintd = tuple_int_list[d].length();
+
+    //switch to a field
+    if(fE == 1)
+    {
+        Mat<ZZ> JZZ = conv< Mat<ZZ> >(JR);
+        {
+            zz_pPush push(p);
+
+            Mat<zz_p> J, T, K;
+            J = conv< Mat<zz_p> >(JZZ);
+            pivot_columns(pivots, J);
+            rank_J = pivots.length();
+
+            // Computing the intersection
+            // (S^* \cap J(f))_d in S_d
+    
+            // T = [ Base(S^*_d) | - Base(img(MJ) ]^t
+            T.SetDims(  dim_Sintd + rank_J, J.NumRows());
+            for(i = 0; i < J.NumRows(); i++)
+                for(j = 0; j < pivots.length(); j++)
+                    T[rank_J + j][i] = -J[i][pivots[j]];
+            for(i = 0; i < dim_Sintd; i++)
+                T[i][ tuple_dict[d][tuple_int_list[i]] ] = 1;
+
+    
+            // T.left_kernel()
+            kernel(K, T); 
+            // extract the first dim_SintD columns of K
+            // this is a basis for (S^* \cap J(f))_d in S_d
+            T.SetDims(K.NumRows(), dim_Sintd);
+            for(i = 0; i < K.NumRows(); i++)
+                for(j = 0; j < dim_Sintd; j++)
+                    T[i][j] = K[i][j];
+            
+            // cokernels_I_basis[d] = T.nonpivots(), the monomials not in the intersection
+            pivot_columns(pivots, T);
+            complement(cokernels_I_basis[d], dim_Sintd, pivots);
+        }
     }
+    else
+    {
+        //fE != 1 ==> R = zz_pE or ZZ_pE
+        Mat<ZZX> JZZX = conv< Mat<ZZX> >(JR);
+        {
+            zz_pPush push(p);
+            {
+                zz_pEPush push(conv<zz_pX>(fE));
+
+                Mat<zz_pE> J, T, K;
+                J = conv< Mat<zz_pE> >(JZZX);
+                pivot_columns(pivots, J);
+                rank_J = pivots.length();
+
+                // Computing the intersection
+                // (S^* \cap J(f))_d in S_d
+        
+                // T = [ Base(S^*_d) | - Base(img(MJ) ]^t
+                T.SetDims(  dim_Sintd + rank_J, J.NumRows());
+                for(i = 0; i < J.NumRows(); i++)
+                    for(j = 0; j < pivots.length(); j++)
+                        T[rank_J + j][i] = -J[i][pivots[j]];
+                for(i = 0; i < dim_Sintd; i++)
+                    T[i][ tuple_dict[d][tuple_int_list[i]] ] = 1;
+
+        
+                // T.left_kernel()
+                kernel(K, T); 
+                // extract the first dim_SintD columns of K
+                // this is a basis for (S^* \cap J(f))_d in S_d
+                T.SetDims(K.NumRows(), dim_Sintd);
+                for(i = 0; i < K.NumRows(); i++)
+                    for(j = 0; j < dim_Sintd; j++)
+                        T[i][j] = K[i][j];
+                
+                // cokernels_I_basis[d] = T.nonpivots(), the monomials not in the intersection
+                pivot_columns(pivots, T);
+                complement(cokernels_I_basis[d], dim_Sintd, pivots);
+
+            }
+        }
+    }
+}
+//deal with the case R = ZZ
+template <>
+inline void dr<ZZ>::init_cokernels_I_basis(int64_t d)
+{
+    assert( p == 0 );
+    //I_d = (S^* + J(f) / J(f))_d
+    Mat<ZZ> J;
+    Vec<int64_t> pivots;
+    int64_t i, j;
+    int64_t rank_J, dim_Sintd;
+    matrix_J(J, d);
+    dim_Sintd = tuple_int_list[d].length();
+
+
+    Mat<ZZ> T, K;
+    pivot_columns(pivots, J);
+    rank_J = pivots.length();
+
+    // Computing the intersection
+    // (S^* \cap J(f))_d in S_d
+
+    // T = [ Base(S^*_d) | - Base(img(MJ) ]^t
+    T.SetDims(  dim_Sintd + rank_J, J.NumRows());
+    for(i = 0; i < J.NumRows(); i++)
+        for(j = 0; j < pivots.length(); j++)
+            T[rank_J + j][i] = -J[i][pivots[j]];
+    for(i = 0; i < dim_Sintd; i++)
+        T[i][ tuple_dict[d][tuple_int_list[i]] ] = 1;
+
+
+    // T.left_kernel()
+    ZZ det2;
+    int64_t r = image(det2, T, K);
+    // m = T.NumRows()
+    // the first m - r rows of K form a basis for the left kernel of T
+
+    // extract the first  m - r rows and dim_SintD columns of K
+    // this is a basis for (S^* \cap J(f))_d in S_d
+    T.SetDims(T.NumRows() - r, dim_Sintd);
+    for(i = 0; i < K.NumRows() - r; i++)
+        for(j = 0; j < dim_Sintd; j++)
+            T[i][j] = K[i][j];
+    
+    // cokernels_I_basis[d] = T.nonpivots(), the monomials not in the intersection
+    pivot_columns(pivots, T);
+    complement(cokernels_I_basis[d], dim_Sintd, pivots);
 
 }
+
+
+
 
 template<class R>
 void dr<R>::matrix_J(Mat<R> &result, int64_t d)
@@ -272,12 +412,14 @@ void dr<R>::matrix_J(Mat<R> &result, int64_t d)
 
 
 template<class R>
-void dr<R>::solve_system(Vec<int64_t> &B, Mat<R> &Unom, R &Udenom, const Mat<T> &T, const Vec<T> &initB)
+void dr<R>::solve_system(Vec<int64_t> &B, Mat<R> &Unom, R &Udenom, const Mat<R> &T, const Vec<int64_t> &initB)
 {
-    if( characteristic != 0)
-        solve_system_padic<R>(Vec<int64_t> &B, Mat<R> &Unom, R &Udenom, const Mat<T> &T, const Vec<T> &initB);
-    else
-        solve_system<R>(Vec<int64_t> &B, Mat<R> &Unom, R &Udenom, const Mat<T> &T, const Vec<T> &initB);
+    ::solve_system_padic<R>(B, Unom, Udenom, T, initB, p, precision, fE);
 }
+template <> inline void dr<ZZ>::solve_system(Vec<int64_t> &B, Mat<ZZ> &Unom, ZZ &Udenom, const Mat<ZZ> &T, const Vec<int64_t> &initB)
+{
+    ::solve_system(B, Unom, Udenom, T, initB);
+}
+
 
 #endif
