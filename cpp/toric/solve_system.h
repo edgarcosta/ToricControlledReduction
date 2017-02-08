@@ -4,11 +4,13 @@
 #ifndef SOLVE_SYSTEM_H
 #define SOLVE_SYSTEM_H
 
+
+#include "tools.h"
+
 #include <cstdint>
 #include <assert.h>
 
-#include <algorithm>
-
+#include <algorithm> // for stl::sort
 
 #include <NTL/ZZX.h>
 #include <NTL/vec_long.h>
@@ -24,7 +26,7 @@ using namespace NTL;
 //R = ZZ, ZZ_p, zz_p. ZZ_pE, or zz_pE
 
 
-// assumes that p is prime for R = zz_p or zz_pE
+// if R != ZZ, assumes that R is a field
 template<class R>
 void pivot_columns(Vec<int64_t> &res, const Mat<R> &T)
 {
@@ -105,7 +107,7 @@ void solve_system(Vec<int64_t> &B, Mat<R> &Unom, R &Udenom, const Mat<R> &T, con
 {
     int64_t nrows, ncols;
     int64_t rankS, rankT;
-    int64_t i, j, position;
+    int64_t i, j;
     Mat<R> S_transpose, S;
     Mat<R> Y; // Y = pivot cols of T, plus J
     Mat<R> Z; // inverse of Y
@@ -149,27 +151,8 @@ void solve_system(Vec<int64_t> &B, Mat<R> &Unom, R &Udenom, const Mat<R> &T, con
     pivot_columns(pivots_S_transpose, S_transpose);
     rankS = pivots_S_transpose.length();
 
-    B = Vec<int64_t>();
-    B.SetLength(nrows - rankS);
-    i = 0;
-    position = 0;
-    for(j = 0; j < rankS; j++)
-    {
-        while(i < pivots_S_transpose[j]  && i < nrows)
-        {
-            B[position] = i;
-            i++;
-            position++;
-        }
-        i++;
-    }
-    while(i < nrows)
-    {
-        B[position] = i;
-        i++;
-        position++;
-    }
-    assert(position == nrows - rankS);
+    // B = S.nonpivots() + initB;
+    complement(B, nrows, pivots_S_transpose);
     B.append( initB );
 
     sort(B.begin(), B.end());
@@ -296,12 +279,15 @@ void solve_system_local(Vec<int64_t> &B,  Mat<R> &Unom, const Mat<R> &T, const V
         int64_t ncols, nrows;
         ncols = T.NumCols();
         nrows = T.NumRows();
+        T_ZZX = conv< Mat<ZZX> >( T );
+        /*
         T_ZZX.SetDims(nrows, ncols);
         for(i = 0; i < nrows; i++)
             for(j = 0; j< ncols; j ++)
                 //  T[i][j].rep() \in ZZ_pX or zz_pX
                 T_ZZX[i][j] = conv<ZZX>( rep( T[i][j] ));
-       Mat<ZZX> U_ZZX;
+        */
+        Mat<ZZX> U_ZZX;
        {
            zz_pPush push(p);
            {
@@ -319,11 +305,14 @@ void solve_system_local(Vec<int64_t> &B,  Mat<R> &Unom, const Mat<R> &T, const V
                 for(i = 0; i < U_Fq.NumRows(); i++)
                     for(j = 0; j < U_Fq.NumCols(); j++)
                         U_ZZX[i][j] = conv<ZZX>( rep( U_Fq[i][j] ) );
-           }
-       }
-       for(i = 0; i < U_ZZX.NumRows(); i++)
-           for(j = 0; j < U_ZZX.NumCols(); j++)
-               Unom[i][j] = conv< R > ( conv<R::rep_type>( U_ZZX[i][j] ));
+            }
+        }
+        Unom = conv< Mat<R> >(U_ZZX);
+        /*
+        for(i = 0; i < U_ZZX.NumRows(); i++)
+            for(j = 0; j < U_ZZX.NumCols(); j++)
+                Unom[i][j] = conv< R > ( conv<R::rep_type>( U_ZZX[i][j] ));
+        */
     }
 
 }
