@@ -143,7 +143,7 @@ void test_solve_system_right_inverse_random(int64_t N)
     }
 }
 
-int main(int argc, char* argv[])
+int main()
 {
     //test over ZZ
     {
