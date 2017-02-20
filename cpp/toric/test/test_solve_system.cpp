@@ -1,11 +1,11 @@
 // Copyright 2017 Edgar Costa
 // See LICENSE file for license details.
 
-#include "../solve_system.h"
+#include "linear_algebra.h"
 #include <iostream>
 #include <sstream>
 
-#define NTESTS 10
+#define NTESTS 1
 #define ZZbits 10
 
 template<class R>
@@ -56,7 +56,7 @@ void test_input_padic(const char* input)
     buffer >> B1;
     buffer >> U1;
     buffer >> D1;
-    solve_system(B2, U2, D2, T, initB);
+    solve_system_padic(B2, U2, D2, T, initB, p, precision, f);
     if( !( B1 == B2 and U1 == U2 and D1 == D2 ))
     {
         cout << "FAIL!\ninput\n:"; 

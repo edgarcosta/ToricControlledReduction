@@ -1,7 +1,7 @@
 // Copyright 2017 Edgar Costa
 // See LICENSE file for license details.
 
-#include "solve_system.h"
+#include "linear_algebra.h"
 #include <NTL/LLL.h>
 
 template<> void pivot_columns(Vec<int64_t> &res, const Mat<ZZ> &T)

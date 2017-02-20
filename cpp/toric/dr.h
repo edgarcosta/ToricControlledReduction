@@ -5,7 +5,7 @@
 #ifndef DR_H
 #define DR_H
 
-#include "solve_system.h"
+#include "linear_algebra.h"
 #include "tools.h"
 
 
@@ -16,6 +16,8 @@
 #include <iostream>//needed?
 #include <fstream>//needed?
 #include <cstring>//needed?
+#include <sstream>
+
 
 #include <NTL/LLL.h>
 #include <NTL/ZZX.h>
@@ -33,7 +35,7 @@ using namespace std;
 using namespace NTL;
 
 //R = ZZ, ZZ_p, zz_p. ZZ_pE, or zz_pe
-template<class R>
+template<typename R>
 class dr{
     public:
         /*
@@ -96,8 +98,8 @@ class dr{
         // tuple_int_list[d] = integral interior points in d*P
         // we store them as (n + 1) tuples (d, w) where w \in d*P or equivalently w/d \in P
         // d \leq n + 1
-        Vec< Vec<int64_t> > tuple_list;
-        Vec< Vec<int64_t> > tuple_int_list;
+        Vec< Vec< Vec<int64_t> > > tuple_list;
+        Vec< Vec< Vec<int64_t> > > tuple_int_list;
         
         // reverse maps
         Vec< map< Vec<int64_t>, int64_t, vi64less> > tuple_dict;
@@ -127,7 +129,7 @@ class dr{
         // constructed such that I_i < J_i
         // basis_dr_Y[i] = J_i or P_1 if i == 1
         // basis_dr_X[i] = I_i or P^*_1 if i == 1 FIXME: P^*_1 = I_1
-        Vec< Vec<int64_t> > cokernels_J_basis, cokernels_I_basis, basis_dr_Y, basis_dr_X;
+         Vec< Vec< Vec<int64_t> > >cokernels_J_basis, cokernels_I_basis, basis_dr_Y, basis_dr_X;
         // reverse maps
         Vec< map< Vec<int64_t>, int64_t, vi64less> > cokernels_J_basis_dict, cokernels_I_basis_dict, basis_dr_Y_dict, basis_dr_X_dict;
 
@@ -196,9 +198,10 @@ class dr{
          * Constructors
          */
         dr(){};
-        dr(const int64_t &p, const map< Vec<int64_t>, R, vi64less> &f, const Mat<int64_t> &AP, const Mat<int64_t> &bP,  int64_t verbose = 0, bool minimal = false){ init(p, f, AP, bP, verbose, minimal); }
+        dr(const char* input, const int64_t &verbose = 0, const bool &minimal = false);
+        dr(const int64_t &p, const map< Vec<int64_t>, R, vi64less> &f, const Mat<int64_t> &AP, const Vec<int64_t> &bP,  const int64_t &verbose = 0, const bool &minimal = false){ init(p, f, AP, bP, verbose, minimal); }
         virtual ~dr(){};
-        void init(const int64_t &p, const map< Vec<int64_t>, R, vi64less> &f, const Mat<int64_t> &AP, const Mat<int64_t> &bP,  int64_t verbose = 0, bool minimal = false);
+        void init(const int64_t &p, const map< Vec<int64_t>, R, vi64less> &f, const Mat<int64_t> &AP, const Vec<int64_t> &bP, const  int64_t &verbose = 0, const bool &minimal = false);
 
         // computes matrix of the map
         // (H0, \dots Hn) ---> h0 * f + \sum_\lambda Hi * \partial_\lambda f
@@ -207,6 +210,7 @@ class dr{
 
 
         void solve_system(Vec<int64_t> &B, Mat<R> &Unom, R &Udenom, const Mat<R> &T, const Vec<int64_t> &initB);
+        void cokernel_intersection(Vec<int64_t>  &res, Mat<R> &T, Mat<R> &S);
 
 
         /*
@@ -217,28 +221,67 @@ class dr{
     
 };
 
-
-
-template<class R>
-void dr<R>::init(const int64_t &p, const map< Vec<int64_t>, R, vi64less> &f, const Mat<int64_t> &AP, const Mat<int64_t> &bP,  int64_t verbose, bool minimal)
+template<typename R>
+dr<R>::dr(const char* input, const int64_t &verbose, const bool &minimal)
 {
+    /*
+     input: 
+     p
+     f.keys()
+     f.values()
+     AP
+     bP
+
+     for example:
+     '17 \n[[0 2][0 0][3 0][2 0][0 1]]\n[1 12 16 1 1] \n[[ 0  1][ 1  0][-2 -3]] \n[0 0 6] \n'
+     */
+
+    stringstream buffer;
+    buffer << input;
+    int64_t local_p;
+    map< Vec<int64_t>, R, vi64less> local_f;
+    Mat<int64_t> local_AP;
+    Vec<int64_t> local_bP;
+    buffer >> local_p;
+    buffer >> local_f;
+    buffer >> local_AP;
+    buffer >> local_bP;
+    init(local_p, local_f, local_AP, local_bP, verbose, minimal);
+}
+
+
+template<typename R>
+void dr<R>::init(const int64_t &p, const map< Vec<int64_t>, R, vi64less> &f, const Mat<int64_t> &AP, const Vec<int64_t> &bP, const int64_t &verbose, const bool &minimal)
+{
+    if(verbose > 2)
+        cout<<"dr::init()"<<endl;
     this->p = p;
-    this->f = f;
+    n = f.begin()->first.length();
+    typename map< Vec<int64_t>, R, vi64less>::const_iterator fit;
+    Vec<int64_t> v;
+    v.SetLength(n + 1);
+    v[0] = 1;
+    for(fit = f.begin(); fit != f.end(); fit++)
+    {
+        for(int64_t i = 0; i < n; i++)
+            v[i + 1] = fit->first[i];
+        this->f[v] = fit->second;
+    }
+
     this->AP = AP;
     this->bP = bP;
     this->verbose = verbose;
-    n = f.begin()->first.length();
     ring<R>(precision, fE, modulus, p);
     if( verbose > 0 )
     {
-        cout<<"n = "<<n;
-        cout<<" p = "<<p;
-        cout<<" precision = "<<precision;
+        cout<<"n = " << this->n;
+        cout<<" p = " << this->p;
+        cout<<" precision = " << this->precision;
         cout<<endl;
-        cout<<"AP = \n"<<AP<<endl;
-        cout<<"bP = "<<bP<<endl;
-        cout <<"f = \n";
-        cout <<= f;
+        cout<<"AP = \n" << this->AP<<endl;
+        cout<<"bP = " << this->bP<<endl;
+        cout << "f = \n";
+        cout <<= this->f;
         cout <<endl;
     }
 
@@ -251,56 +294,67 @@ void dr<R>::init(const int64_t &p, const map< Vec<int64_t>, R, vi64less> &f, con
         init_last_reduction();
         init_proj();
     }
+    if(verbose > 2)
+        cout<<"dr::init() done"<<endl;
 }
 
-template<class R>
+template<typename R>
 void dr<R>::init_tuples()
 {
+    if(verbose > 2)
+        cout<<"dr::init_tuples() begin"<<endl;
+
     Vec< Vec<int64_t>> fkeys;
+    fkeys.SetLength(0);
     Vec<int64_t> v;
     int64_t i;
     v.SetLength(n);
+    v[0] = 1;
     typename map< Vec<int64_t>, R, vi64less>::const_iterator fit;
     for(fit = f.begin(); fit != f.end(); fit++)
     {
         //v = fit->first[1:]
         for(i = 0; i < n; i++)
-            v[i] = fit->first[i+1];
+            v[i] = fit->first[i + 1];
         fkeys.append(v);
     }
-    
-    Vec< Vec<int64_t> > local_tuple_list, local_tuple_int_list;
+    Vec< Vec< Vec<int64_t> > > local_tuple_list, local_tuple_int_list;
     integral_points(local_tuple_list, local_tuple_int_list, AP, bP, fkeys, n + 2);
     
-    assert(local_tuple_list[0].length() == 1);
-    assert(local_tuple_int_list[0].length() == 0 );
+    assert_print(local_tuple_list[0].length(), ==, 1);
+    assert_print(local_tuple_int_list[0].length(), ==, 0 );
     //copy local data to object data
-    tuple_list.SetLength(n+1);
-    tuple_int_list.SetLength(n+1);
+    tuple_list.SetLength(n + 2);
+    tuple_int_list.SetLength(n + 2);
     for(i = 0; i < n + 2; i++)
     {
         tuple_list[i] = local_tuple_list[i];
         tuple_int_list[i] = local_tuple_int_list[i];
+        //FIXME double SORT!
     }
 
-    tuple_dict.SetLength(n+1);
-    tuple_int_dict.SetLength(n+1);
-    for(i = 0 ; i < n + 1; i++)
+    tuple_dict.SetLength(n + 2);
+    tuple_int_dict.SetLength(n + 2);
+    for(i = 0 ; i < n + 2; i++)
     {
         reverse_dict(tuple_dict[i], tuple_list[i]);
         reverse_dict(tuple_int_dict[i], tuple_int_list[i]);
     }
+    if(verbose > 2)
+        cout<<"dr::init_tuples() end"<<endl;
 }
 
 
-template<class R>
+template<typename R>
 void dr<R>::init_f_power(int64_t N)
 {
+    if(verbose > 2)
+        cout<<"dr::init_f_power("<<N<<")"<<endl;
     if( f_power.length() == 0)
     {
         f_power.SetLength(1);
         Vec<int64_t> zero;
-        zero.SetLength(n + 1);
+        zero.SetLength(n + 1, 0);
         f_power[0][zero] = R(1);
     }
     
@@ -325,10 +379,14 @@ void dr<R>::init_f_power(int64_t N)
 
         }
     }
+    if(verbose > 2)
+        cout<<"dr::init_f_power("<<N<<") done"<<endl;
 }
-template<class R>
+template<typename R>
 void dr<R>::init_solve_and_cokernels()
 {
+    if(verbose > 2)
+        cout<<"dr::init_solve_and_cokernels()"<<endl;
     int64_t i, j;
     Vec<int64_t> ci;
     ci.SetLength(n + 1);
@@ -350,8 +408,10 @@ void dr<R>::init_solve_and_cokernels()
             tmp *= Q;
         P+=tmp;
     }
-    cokernels_J_dimensions = conv< Vec<int64_t> >(P);
-    cokernels_J_dimensions.append(0);
+    cokernels_J_dimensions.SetLength(deg(P) + 2, 0);
+    cokernels_J_dimensions[deg(P) + 1] = 0;
+    for(i = 0; i < deg(P) + 1; i++)
+        cokernels_J_dimensions[i] = conv< long >( coeff(P, i) );
     dim_J = sum(cokernels_J_dimensions); 
 
     if( verbose > 0 )
@@ -367,14 +427,14 @@ void dr<R>::init_solve_and_cokernels()
         Mat<R> J;
         matrix_J(J, i);
         if( verbose > 0)
-            printf("Solving Jacobian relations at degree %ll (%ll x %ll)", i, J.NumRows(), J.NumCols());
+            printf("Solving Jacobian relations at degree %ld (%ld x %ld)\n", (long)i, (long)J.NumRows(), (long)J.NumCols());
 
         Vec<int64_t> B, initB;
         if( i <= n )
         {
             initB.SetLength(cokernels_I_dimensions[i]);
             for(j = 0; j < cokernels_I_dimensions[i]; i++)
-                initB[j] = tuple_dict[i][cokernels_I_basis[j]];
+                initB[j] = tuple_dict[i][cokernels_I_basis[i][j]];
 
         }
         else
@@ -388,7 +448,7 @@ void dr<R>::init_solve_and_cokernels()
         {
             if(i == n + 1)
                 cout<<"The hypersurface is not nondegenerate"<<endl;
-            printf("Expected B.length() = %lld, got %lld", cokernels_J_dimensions[i], B.length());
+            printf("Expected B.length() = %ld, got %ld", (long) cokernels_J_dimensions[i], (long) B.length());
             assert(false);
         }
         if( i > 0 )
@@ -410,11 +470,11 @@ void dr<R>::init_solve_and_cokernels()
     basis_dr_X.SetLength(n+1);
     basis_dr_X_dict.SetLength(n+1);
 
-    basis_dr_Y[0].SetLength[0];
+    basis_dr_Y[0].SetLength(0);
     basis_dr_Y[1] = tuple_list[1];
     basis_dr_Y_dict[1] = tuple_dict[1];
 
-    basis_dr_X[0].SetLength[0];
+    basis_dr_X[0].SetLength(0);
     basis_dr_X[1] = tuple_int_list[1];
     basis_dr_X_dict[1] = tuple_int_dict[1];
 
@@ -428,13 +488,16 @@ void dr<R>::init_solve_and_cokernels()
 
 
     }
-
+    if(verbose > 2)
+        cout<<"dr::init_solve_and_cokernels() done"<<endl;
 }
 
-template<class R>
+template<typename R>
 void dr<R>::init_cokernels_I_basis()
 {
-    cokernels_I_dimensions.SetLength(n + 1);
+    if(verbose > 2)
+        cout<<"dr::init_cokernels_I_basis()"<<endl;
+    cokernels_I_dimensions.SetLength(n + 1, 0);
     cokernels_I_basis.SetLength(n + 1);
     cokernels_I_basis_dict.SetLength(n + 1);
     for(int64_t d = 1; d < n + 1; d++)
@@ -446,155 +509,45 @@ void dr<R>::init_cokernels_I_basis()
     dim_I = sum(cokernels_I_dimensions);
     if(verbose > 0)
         cout << "dim I_i = "<<cokernels_I_dimensions<<endl;
+    if(verbose > 2)
+        cout<<"dr::init_cokernels_I_basis() done"<<endl;
+
 
 }
 
-template<class R>
+template<typename R>
 void dr<R>::init_cokernels_I_basis(int64_t d)
 {
-    assert( p != 0 );
+    if(verbose > 3)
+        cout<<"dr::init_cokernels_I_basis("<<d<<")"<<endl;
+
     //I_d = (S^* + J(f) / J(f))_d
-    Mat<R> JR;
-    Vec<int64_t> pivots;
-    int64_t i, j;
-    int64_t rank_J, dim_Sintd;
-    matrix_J(JR, d);
-    dim_Sintd = tuple_int_list[d].length();
-
-    //switch to a field
-    if(fE == 1)
-    {
-        Mat<ZZ> JZZ = conv< Mat<ZZ> >(JR);
-        {
-            zz_pPush push(p);
-
-            Mat<zz_p> J, T, K;
-            J = conv< Mat<zz_p> >(JZZ);
-            pivot_columns(pivots, J);
-            rank_J = pivots.length();
-
-            // Computing the intersection
-            // (S^* \cap J(f))_d in S_d
-    
-            // T = [ Base(S^*_d) | - Base(img(MJ) ]^t
-            T.SetDims(  dim_Sintd + rank_J, J.NumRows());
-            for(i = 0; i < J.NumRows(); i++)
-                for(j = 0; j < pivots.length(); j++)
-                    T[rank_J + j][i] = -J[i][pivots[j]];
-            for(i = 0; i < dim_Sintd; i++)
-                T[i][ tuple_dict[d][tuple_int_list[i]] ] = 1;
-
-    
-            // T.left_kernel()
-            kernel(K, T); 
-            // extract the first dim_SintD columns of K
-            // this is a basis for (S^* \cap J(f))_d in S_d
-            T.SetDims(K.NumRows(), dim_Sintd);
-            for(i = 0; i < K.NumRows(); i++)
-                for(j = 0; j < dim_Sintd; j++)
-                    T[i][j] = K[i][j];
-            
-            // cokernels_I_basis[d] = T.nonpivots(), the monomials not in the intersection
-            pivot_columns(pivots, T);
-            complement(cokernels_I_basis[d], dim_Sintd, pivots);
-        }
-    }
-    else
-    {
-        //fE != 1 ==> R = zz_pE or ZZ_pE
-        Mat<ZZX> JZZX = conv< Mat<ZZX> >(JR);
-        {
-            zz_pPush push(p);
-            {
-                zz_pEPush push(conv<zz_pX>(fE));
-
-                Mat<zz_pE> J, T, K;
-                J = conv< Mat<zz_pE> >(JZZX);
-                pivot_columns(pivots, J);
-                rank_J = pivots.length();
-
-                // Computing the intersection
-                // (S^* \cap J(f))_d in S_d
-        
-                // T = [ Base(S^*_d) | - Base(img(MJ) ]^t
-                T.SetDims(  dim_Sintd + rank_J, J.NumRows());
-                for(i = 0; i < J.NumRows(); i++)
-                    for(j = 0; j < pivots.length(); j++)
-                        T[rank_J + j][i] = -J[i][pivots[j]];
-                for(i = 0; i < dim_Sintd; i++)
-                    T[i][ tuple_dict[d][tuple_int_list[i]] ] = 1;
-
-        
-                // T.left_kernel()
-                kernel(K, T); 
-                // extract the first dim_SintD columns of K
-                // this is a basis for (S^* \cap J(f))_d in S_d
-                T.SetDims(K.NumRows(), dim_Sintd);
-                for(i = 0; i < K.NumRows(); i++)
-                    for(j = 0; j < dim_Sintd; j++)
-                        T[i][j] = K[i][j];
-                
-                // cokernels_I_basis[d] = T.nonpivots(), the monomials not in the intersection
-                pivot_columns(pivots, T);
-                complement(cokernels_I_basis[d], dim_Sintd, pivots);
-
-            }
-        }
-    }
-}
-//deal with the case R = ZZ
-template <>
-inline void dr<ZZ>::init_cokernels_I_basis(int64_t d)
-{
-    assert( p == 0 );
-    //I_d = (S^* + J(f) / J(f))_d
-    Mat<ZZ> J;
-    Vec<int64_t> pivots;
-    int64_t i, j;
-    int64_t rank_J, dim_Sintd;
+    Mat<R> J;
+    Vec<int64_t> nonpivots;
+    int64_t i, dim_Sintd;
     matrix_J(J, d);
     dim_Sintd = tuple_int_list[d].length();
 
-
-    Mat<ZZ> T, K;
-    pivot_columns(pivots, J);
-    rank_J = pivots.length();
-
-    // Computing the intersection
-    // (S^* \cap J(f))_d in S_d
-
-    // T = [ Base(S^*_d) | - Base(img(MJ) ]^t
-    T.SetDims(  dim_Sintd + rank_J, J.NumRows());
-    for(i = 0; i < J.NumRows(); i++)
-        for(j = 0; j < pivots.length(); j++)
-            T[rank_J + j][i] = -J[i][pivots[j]];
+    //Matrinx representing S^*_d in S_d
+    Mat<R> T;
+    T.SetDims(J.NumRows(), dim_Sintd);
     for(i = 0; i < dim_Sintd; i++)
-        T[i][ tuple_dict[d][tuple_int_list[i]] ] = 1;
+        T[tuple_dict[d][tuple_int_list[d][i]]][i] = 1;
 
+    //computes the cokernel of the map (img(J) \cap S^* )_d -> S^*_d
+    cokernel_intersection(nonpivots, T, J);
+    cokernels_I_basis[d].SetLength(nonpivots.length());
+    for(i = 0; i < nonpivots.length(); i++)
+        cokernels_I_basis[d][i] = tuple_int_list[d][nonpivots[i]];
 
-    // T.left_kernel()
-    ZZ det2;
-    int64_t r = image(det2, T, K);
-    // m = T.NumRows()
-    // the first m - r rows of K form a basis for the left kernel of T
-
-    // extract the first  m - r rows and dim_SintD columns of K
-    // this is a basis for (S^* \cap J(f))_d in S_d
-    T.SetDims(T.NumRows() - r, dim_Sintd);
-    for(i = 0; i < K.NumRows() - r; i++)
-        for(j = 0; j < dim_Sintd; j++)
-            T[i][j] = K[i][j];
-    
-    // cokernels_I_basis[d] = T.nonpivots(), the monomials not in the intersection
-    pivot_columns(pivots, T);
-    complement(cokernels_I_basis[d], dim_Sintd, pivots);
-
+    if(verbose > 3)
+        cout<<"dr::init_cokernels_I_basis("<<d<<") done"<<endl;
 }
 
 
 
 
-template<class R>
+template<typename R>
 void dr<R>::matrix_J(Mat<R> &result, int64_t d)
 {
     //free storage and make 0 x 0 
@@ -619,7 +572,7 @@ void dr<R>::matrix_J(Mat<R> &result, int64_t d)
 
 
 
-template<class R>
+template<typename R>
 void dr<R>::solve_system(Vec<int64_t> &B, Mat<R> &Unom, R &Udenom, const Mat<R> &T, const Vec<int64_t> &initB)
 {
     ::solve_system_padic<R>(B, Unom, Udenom, T, initB, p, precision, fE);
@@ -627,6 +580,17 @@ void dr<R>::solve_system(Vec<int64_t> &B, Mat<R> &Unom, R &Udenom, const Mat<R> 
 template <> inline void dr<ZZ>::solve_system(Vec<int64_t> &B, Mat<ZZ> &Unom, ZZ &Udenom, const Mat<ZZ> &T, const Vec<int64_t> &initB)
 {
     ::solve_system(B, Unom, Udenom, T, initB);
+}
+
+template<typename R>
+void dr<R>::cokernel_intersection(Vec<int64_t>  &res, Mat<R> &T, Mat<R> &S)
+{
+    ::cokernel_intersection_local(res, T, S, p, fE);
+}
+template<>
+inline void dr<ZZ>::cokernel_intersection(Vec<int64_t>  &res, Mat<ZZ> &T, Mat<ZZ> &S)
+{
+    ::cokernel_intersection(res, T, S);
 }
 
 
@@ -637,7 +601,7 @@ template <> inline void dr<ZZ>::solve_system(Vec<int64_t> &B, Mat<ZZ> &Unom, ZZ 
  * w \in P_m and m > 0
  */
 
-template<class R>
+template<typename R>
 void dr<R>::init_rho_and_pi_matrices()
 {
     int64_t i, j, k, d;
@@ -659,16 +623,15 @@ void dr<R>::init_rho_and_pi_matrices()
     for(d = 1; d < n + 2; d++)
     {
         Vec<Mat<R>> &RHO = rho[d];
-        RHO[d].SetLength(n + 2);
+        RHO.SetLength(n + 2);
         // rho is represented a linear polynomial in W0, W1, ..., WN variables, that correspond to w0, ..., wn
         // RHO[0] is the constant term
         // RHO[i+1] is the Wi term, where W0 corresponds to the degree
 
         Mat<R> &PI = pi[d];
 
-        R &D = solve_denom[d];
         Mat<R> Ucols;
-        tranpose(Ucols, solve_matrix[d]);
+        transpose(Ucols, solve_matrix[d]);
 
         pi_den[d] = solve_denom[d];
         rho_den[d] = solve_denom[d];
@@ -730,7 +693,7 @@ void dr<R>::init_rho_and_pi_matrices()
     }
 }
 
-template<class R>
+template<typename R>
 void dr<R>::init_inclusion_matrices()
 {
     // for u in P1 the matrix representing
@@ -770,7 +733,7 @@ void dr<R>::init_inclusion_matrices()
     }
 }
 
-template<class R>
+template<typename R>
 void dr<R>::test_inclusion_matrices()
 {
     int64_t i, j, k;
@@ -805,7 +768,7 @@ void dr<R>::test_inclusion_matrices()
     
 }
 
-template<class R>
+template<typename R>
 void dr<R>::init_last_reduction()
 {
     //M: P_1 + .... + P_{n + 1} --- > P_1 + J_2 + ... + J_n
@@ -855,11 +818,14 @@ void dr<R>::init_last_reduction()
             // rho[k][0].column(j).list() \in P_{k-1}
             Vec<R> G, H;
             // G = [0]*dim(P_1 + ... + P_{k-2}) +  rho[k][0].column(j) + [0]*dim(P_k + ... P_{n+1} 
-            G.SetLength(total_rows);
+            G.SetLength(total_rows, R(0));
             for(i = 0; i < rho[k][0].NumRows(); i++)
                 G[i + shift_columns[k - 1]] = rho[k][0][i][j];
             
-            H = (M * G)/ rho_den[k];
+            H = (M * G);
+            if( rho_den[k] != 1)
+                for(i = 0; i < H.length(); i++)
+                    H[i] /= rho_den[k];
 
             for(i = 0; i < H.length(); i++)
                 M[i][ shift_columns[k] + j] += H[i];
@@ -868,7 +834,7 @@ void dr<R>::init_last_reduction()
     }
 }
 
-template<class R>
+template<typename R>
 void dr<R>::test_last_reduction()
 {
     if( verbose > 0 )
@@ -884,7 +850,7 @@ void dr<R>::test_last_reduction()
     {
         Vec<int64_t> &v = B[i];
         Vec<R> expected;
-        expected.SetLength(B.length());
+        expected.SetLength(B.length(), 0);
         expected[i] = last_reduction_den;
         for(k = 0; k < n + 2 - v[0]; k++)
         {
@@ -912,7 +878,7 @@ void dr<R>::test_last_reduction()
 }
 
 
-template<class R>
+template<typename R>
 void dr<R>::init_proj()
 {
     //FIXME
