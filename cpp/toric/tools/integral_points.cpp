@@ -1,18 +1,25 @@
 // Copyright 2017 Edgar Costa
 // See LICENSE file for license details.
 
+#include <set>
 #include "tools.h"
 
 
 
-void integral_points(Vec< Vec< Vec< int64_t > > > &local_tuple_list, Vec< Vec< Vec<int64_t> > > &local_tuple_int_list, const Mat<int64_t> &AP, const Vec<int64_t> &bP, const Vec< Vec<int64_t> > &Pvertices, const int64_t &N)
+void integral_points(Vec< Vec< Vec< int64_t > > > &tuple_list, Vec< Vec< Vec<int64_t> > > &tuple_int_list, const Mat<int64_t> &AP, const Vec<int64_t> &bP, const Vec< Vec<int64_t> > &Pvertices, const int64_t &N)
 {
-    //assumes that P is the convex hull of Pvertices and 0
-    //hence we will use to Pvertices to figure out Ai and Bi such that P < prod( [Ai, Bi])
-    //and then loop over all monomials in prod( (n+1) [Ai, Bi]) to initialize tuple_list[i] i <= n + 1;
-    Vec<int64_t> A, B, NA, NB, v;
-    int64_t i, j;
-    int64_t n, Pmax_volume, vol, k, kint;
+    /*
+     * Assumes that P is the convex hull of Pvertices and 0
+     * and P is a normal Polytope, ie, we can deduce k*P = P_1 + ..... + P_1
+     */
+    
+    /* 
+     * First we compute a cube, prod( [Ai, Bi]), such that P < prod( [Ai, Bi])
+     * From it we will deduce the integral points of P, and from there we use normality to deduce k*P
+     */
+    assert(N > 0);
+    Vec<int64_t> A, B, zA, zB, v;
+    int64_t i, j, n, k;
     n = Pvertices[0].length();
     A.SetLength(n, 0);
     B.SetLength(n, 0);
@@ -30,67 +37,40 @@ void integral_points(Vec< Vec< Vec< int64_t > > > &local_tuple_list, Vec< Vec< V
     for(i = 0; i < n; i++)
         assert_print(A[i], < , B[i]);
 
-    //w = B - A + (1,...,1);
-    sub(v, B, A);
-    for(i = 0; i < n; i++)
-        v[i]++;
-    // prod(w) = Vol( prod( [-Ai, Bi]) )
-    Pmax_volume = prod(v);
 
-    local_tuple_list.SetLength(N);
-    local_tuple_int_list.SetLength(N);
-    //allocate enough space
-    local_tuple_list[0].SetMaxLength(1);
-    local_tuple_int_list[0].SetMaxLength(0);
-    for(i =1; i < N; i++)
-    {
-        vol = Pmax_volume * pow(i, n);
-        local_tuple_list[i].SetMaxLength(vol);
-        local_tuple_int_list[i].SetMaxLength(vol);
-    }
-    
-    // NA = [0] + N * A
-    mul(v, N, A);
-    NA.SetLength(1, 0);
-    NA.append(v);
-        
+
+    zA.SetLength(1, 1);
+    zA.append(A);
+
     // NB = [0] + N * B
-    mul(v, N, B);
-    NB.SetLength(1, 0);
-    NB.append(v);
+    zB.SetLength(1, 1);
+    zB.append(B);
 
-    
-    v = NA;
+    v = zA;
 
-    // v loop over the box  prod( (n+1) [-Ai, Bi] )
+    std::set< Vec< int64_t >, vi64less> S;
+    std::set< Vec< int64_t >, vi64less>::const_iterator Sit;
+    // v loop over the box  prod(  [-Ai, Bi] )
     while( true )
     {
-        for( ;v[n] <= NB[n]; v[n]++)
+        for( ;v[n] <= zB[n]; v[n]++)
         {
             //do stuff
+            if( min_P(AP, bP, v) <= 1 )
+                S.insert(v);
             
-            k = min_P(AP, bP, v);
-            kint = min_intP(AP, bP, v);
-            for(j = k; j < N; j++)
-            {
-                v[0] = j;
-                local_tuple_list[j].append(v);
-                if( j >= kint )
-                    local_tuple_int_list[j].append(v);
-            }
         }
-        v[n] = NB[n];
-        v[0] = 0;
+        v[n] = zB[n];
 
-        if(v == NB)
+        if(v == zB)
             break;
         else
         {
             // v[0] is a dummy variable
             for(i = n; i >= 1; i--)
             {
-                if( v[i] == NB[i] )
-                    v[i] = NA[i];
+                if( v[i] == zB[i] )
+                    v[i] = zA[i];
                 else
                 {
                     v[i]++;
@@ -98,5 +78,52 @@ void integral_points(Vec< Vec< Vec< int64_t > > > &local_tuple_list, Vec< Vec< V
                 }
             }
         }
+    }
+
+    tuple_list.SetLength(N);
+    tuple_int_list.SetLength(N);
+    //allocate enough space
+    tuple_list[0].SetLength(1);
+    tuple_list[0][0].SetLength(n + 1, 0);
+    tuple_list[1].SetLength(S.size());
+    tuple_int_list[0].SetLength(0);
+    tuple_int_list[1].SetMaxLength(S.size());
+
+    for(i = 0, Sit = S.cbegin(); Sit != S.cend(); Sit++, i++)
+        tuple_list[1][i] = *Sit;
+    
+
+    Vec< Vec<int64_t> > buffer;
+    for(k = 2; k < N; k++)
+    {
+        S.clear();
+        for(i = 0; i < tuple_list[1].length(); i++)
+        {
+            v = tuple_list[1][i];
+            buffer.SetLength(tuple_list[k-1].length());
+            for(j = 0; j < tuple_list[k-1].length(); j++)
+                buffer[j] =  v + tuple_list[k-1][j];
+            S.insert(buffer.begin(), buffer.end());
+        }
+        tuple_list[k].SetLength(S.size());
+        tuple_list[k].FixAtCurrentLength();
+        for(i = 0, Sit = S.cbegin(); Sit != S.cend(); Sit++, i++)
+            tuple_list[k][i] = *Sit;
+        tuple_int_list[k].SetMaxLength(tuple_list[k].length());
+    }
+    
+    for(i = 0; i < tuple_list[N - 1].length(); i++)
+    {
+        v = tuple_list[N-1][i];
+        for(k = min_intP(AP, bP, v); k < N; k++)
+        {
+            v[0] = k;
+            tuple_int_list[k].append(v);
+        }
+    }
+    for(k = 1; k < N; k++)
+    {
+        tuple_int_list[k].SetMaxLength(tuple_int_list[k].length());
+        tuple_int_list.FixAtCurrentLength();
     }
 }

@@ -318,25 +318,18 @@ void dr<R>::init_tuples()
             v[i] = fit->first[i + 1];
         fkeys.append(v);
     }
-    Vec< Vec< Vec<int64_t> > > local_tuple_list, local_tuple_int_list;
-    integral_points(local_tuple_list, local_tuple_int_list, AP, bP, fkeys, n + 2);
+    integral_points(tuple_list, tuple_int_list, AP, bP, fkeys, n + 2);
     
-    assert_print(local_tuple_list[0].length(), ==, 1);
-    assert_print(local_tuple_int_list[0].length(), ==, 0 );
-    //copy local data to object data
-    tuple_list.SetLength(n + 2);
-    tuple_int_list.SetLength(n + 2);
-    for(i = 0; i < n + 2; i++)
-    {
-        tuple_list[i] = local_tuple_list[i];
-        tuple_int_list[i] = local_tuple_int_list[i];
-        //FIXME double SORT!
-    }
+    assert_print(tuple_list[0].length(), ==, 1);
+    assert_print(tuple_int_list[0].length(), ==, 0 );
 
+    cout << tuple_list << endl;
+    cout << tuple_int_list << endl;
     tuple_dict.SetLength(n + 2);
     tuple_int_dict.SetLength(n + 2);
     for(i = 0 ; i < n + 2; i++)
     {
+        cout << i << endl;
         reverse_dict(tuple_dict[i], tuple_list[i]);
         reverse_dict(tuple_int_dict[i], tuple_int_list[i]);
     }
