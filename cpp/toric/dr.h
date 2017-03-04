@@ -41,7 +41,8 @@ template<typename R>
 class dr{
     public:
         /*
-         * Notation:
+         * NOTATION:
+         *
          * P a polyhedron in ZZ^n
          * f a polynomial x1, ..., xn
          * and convexhull( supp(f) U 0) =  P
@@ -71,7 +72,7 @@ class dr{
          */
 
         /* 
-         * Attributes
+         * Attributes and corresponding initializing functions
          */
         map< Vec<int64_t>, R, vi64less> f; 
         int64_t n;
@@ -84,30 +85,40 @@ class dr{
          */
         int64_t verbose;
         bool minimal;
-        // Specifications that must match with the modulus that defines R
+
+        /*
+         * Working ring
+         */
+        // Specifications that MUST match with the modulus that defines R
         int64_t p; // the characteristic where f comes from, = 0 if R is ZZ, else the characteristic of FFq
         int64_t precision;
         ZZX fE; // 1 if p == q else FFq.defining_polynomial()
         ZZ modulus; // p^precision
-        
+       
 
-        // Half space representation of P
-        // w \in k*P <=>  AP * v + k *bP >= 0
+        /*
+         * Polytope
+         *
+         * Half space representation of P
+         * w \in k*P <=>  AP * v + k *bP >= 0
+         */
         Mat<int64_t> AP;
         Vec<int64_t> bP;
         // returns the minimal k such that v \in k*P
         int64_t min_P(const Vec<int64_t> &v){ return ::min_P(AP, bP, v); }
         //returns the minimal k such that v \in k*int(P)
         int64_t min_intP(const Vec<int64_t> &v){ return ::min_intP(AP, bP, v); }
-                
 
 
-        
-        
-        // tuple_list[d] = integral points in d*P 
-        // tuple_int_list[d] = integral interior points in d*P
-        // we store them as (n + 1) tuples (d, w) where w \in d*P or equivalently w/d \in P
-        // d \leq n + 1
+
+        /*
+         * integral points in the polytope
+         *
+         * tuple_list[d] = integral points in d*P 
+         * tuple_int_list[d] = integral interior points in d*P
+         * we store them as (n + 1) tuples (d, w) where w \in d*P or equivalently w/d \in P
+         * d \leq n + 1
+         */
         Vec< Vec< Vec<int64_t> > > tuple_list;
         Vec< Vec< Vec<int64_t> > > tuple_int_list;
         
@@ -118,30 +129,45 @@ class dr{
         // computes all the above
         void init_tuples();
         
-        // f_power[i] = f^i
+
+        // Powers of f
+        // f_power[i] = f^i         
         Vec<  map< Vec<int64_t>, R, vi64less> > f_power;
         // if needed computes f^N and adds it to the f_power list
         void init_f_power(int64_t N);
     
-        // solve_matrix[d] represents the map
-        // P_d ---> P_{d-1}^n + J_d 
-        //   g ---> (gi, ci)
-        // such that
-        // g = \sum gi * Fi + cokernels 
+
+        /*
+         *
+         * solve_matrix[d] represents the map
+         * P_d ---> P_{d-1}^n + J_d 
+         * g ---> (gi, ci)
+         * such that
+         * g = \sum gi * Fi + cokernels 
+         */
         Vec< Mat<R> > solve_matrix;
         Vec< R > solve_denom;
-        
-        // coKernels_J_dimensions[i] = \dim J_i
+
+        /*
+         * Recall:
+         * J_d = (S / J(f))_d
+         * I_d = (S^* + J(f) / J(f))_d
+         * PH^{n-1} (Y) = P_1 + J_2 + ... + J_n
+         * and
+         * PH^{n-1} (X) = P^*_1 + I_2 + ... + I_n 
+         */
+        // coKernels_*_dimensions[i] = \dim *_i
         Vec<int64_t> cokernels_J_dimensions, cokernels_I_dimensions;
         int64_t dim_J, dim_I; //sum(coKernels_*_dimensions)
         
-        // cokernels_*_basis[i] = basis for *_i
-        // constructed such that I_i < J_i
+        // cokernels_*_basis[i] = basis for *_i in P_i
+        // constructed such that basis for I_i < basis for J_i
         // basis_dr_Y[i] = J_i or P_1 if i == 1
         // basis_dr_X[i] = I_i or P^*_1 if i == 1 FIXME: P^*_1 = I_1
          Vec< Vec< Vec<int64_t> > >cokernels_J_basis, cokernels_I_basis, basis_dr_Y, basis_dr_X;
         // reverse maps
         Vec< map< Vec<int64_t>, int64_t, vi64less> > cokernels_J_basis_dict, cokernels_I_basis_dict, basis_dr_Y_dict, basis_dr_X_dict;
+        // \dim PH^{n-1} (Y) and \dim PH^{n-1} (X)
         int64_t dim_dr_Y, dim_dr_X;
 
 
@@ -157,13 +183,17 @@ class dr{
 
 
 
-        // rho_i,w : P_i --> P_{i-1}
-        // m w g \omega/f^{m +1} = w \rho_{i, w} (g) \omega/f^m + m w \pi_i(g) \omega/f^{m+1}
-        // in PH^{n-1}(Y)
-        //
-        // rho[i] stores rho_i as one degree polynomial in (W_1, ..., W_n) with matrix coefficients
-        // rho[i][j] represents the coefficient of rho_i associated to W_{j+1}
-        // e.g. rho[i][0] is the constant coefficient
+        /*
+         * Write
+         * rho_i,w : P_i --> P_{i-1}
+         * m w g \omega/f^{m +1} = w \rho_{i, w} (g) \omega/f^m + m w \pi_i(g) \omega/f^{m+1}
+         * in PH^{n-1}(Y)
+         *
+         *
+         * rho[i] represents rho_i as one degree polynomial in (W_1, ..., W_n) with matrix coefficients
+         * rho[i][j] represents the coefficient of rho_i associated to W_{j+1}
+         * e.g. rho[i][0] is the constant coefficient
+        */
         Vec< Vec< Mat<R> > > rho;
         Vec< R > rho_den;
 
@@ -228,11 +258,63 @@ class dr{
         void cokernel_intersection(Vec<int64_t>  &res, Mat<R> &T, Mat<R> &S);
 
         /*
-         * reduction
+         * v \in P1
+         * write J_f as J0 + J1 + ... + Jn
+         * returns matrix M in R[T] such that represents
+         * M: J_0 + J_1 + ... + J_n -->  J_0 + J_1 + ... + J_n
+         *    (a0, a1, ..., an) --> (b0, b1, ..., bn)
+         * such that
+         * u * v^(j + 1) \sum_i (m + j + i)! a_i /f^{m + j + i + 1} \omega
+         * = u * v^j \sum_i (m + j + i - 1)! b_i /f^{m + j + i} \omega
+         * we also have
+         * J_0 --> J_0
+         * J_1 --> J_0 + J_1
+         * ...
+         * J_n --> J_0 + J_1 + ... + J_n
+         * where w \in P_m, st (m, j) != 0
          */
-        // computes the coordinates of x^w / f^m in PH^{n-1} (Y)
+        void get_reduction_matrix(Vec< Mat<R> > &M, R &Mden, const Vec<int64_t> &u, const Vec<int64_t> &w);
+
+        
+        /*
+         * reduction
+         *
+         * input: 
+         * * u \in P_m, m > 0
+         * * v \in P_1
+         * * k \in NN
+         * * G = (a0, a1, ..., an) \in J_0 + \dots + J_n
+         * output:
+         * * H = (b0, b1, ..., bn) \in J_0 + \dots + J_n
+         * * D \in self.R
+         * such that
+         * D u v^k \sum_i (m + i + k - 1)! ai omega / f^{m + i + k }
+         * = 
+         * u \sum_i (m + i - 1)! bi omega / f^{m + i}
+         */
+        void reduce_vector(Vec<R> &H, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t k, const Vec<R> G, int method = 0)
+        {
+            switch(method)
+            {
+                case 0:
+                    reduce_vector_plain(H, u, v, k, G); break;
+                case 1:
+                    reduce_vector_finitediff(H, u, v, k, G); break;
+                default:
+                    reduce_vector(H, u, v, G); break;
+            }
+        }
+        void reduce_vector_plain(Vec<R> &H, R &D, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t k, const Vec<R> &G);
+        void reduce_vector_finitediff(Vec<R> &H, R &D, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t k, const Vec<R> &G);
+        //TODO
+        void reduce_vector_BSGS(Vec<R> &H, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t k, const Vec<R> &G);
+
+
+        // in a naive way, only using get_reduction_matrix
+        // computes the coordinates of x^w / f^m in PH^{n-1} (Y) 
         // random = if takes a random path or not
         void monomial_to_basis(Vec<R> &res, const Vec<int64_t> &w, bool random = false);
+
 
         /*
          * Test functions
@@ -376,6 +458,7 @@ void dr<R>::init_tuples()
 
     for(i = 0 ; i < n + 2; i++)
     {
+        //we want the integral points to sorted by minPless and then by vi64less
         sort(tuple_int_list[i].begin(), tuple_int_list[i].end(), vi64less() );
         stable_sort(tuple_int_list[i].begin(), tuple_int_list[i].end(), minPless);
         stable_sort(tuple_list[i].begin(), tuple_list[i].end(), minPless);
@@ -1038,6 +1121,218 @@ void dr<R>::test_all()
     if( verbose > 0)
         cout << "dr::test_all() done" << endl;
 }
+
+template<typename R>
+void dr<R>::get_reduction_matrix(Vec< Mat<R> > &M, R &Mden, const Vec<int64_t> &u, const Vec<int64_t> &v)
+{
+    if( verbose > 2)
+        cout << "dr::get_reduction_matrix(u = "<<u<<", v = "<<v<<")" << endl;
+
+    //asserts \deg v == 1
+    assert_print(v[0], ==, 1);
+
+    int64_t i, j, k, l;
+
+
+    // M = M[0] + M[1] * T + ... + M[n] * T^(n + 1)
+    M.clear();
+    M.SetLength(n + 2);
+    for(i = 0; i < n + 2; i++)
+        M[i].SetDims(dim_J, dim_J);
+
+    // rho_{k, u + T*v} = RHO0[k] + T*RHO1[k] 1 <= k <= n + 1
+    Vec< Mat<R> > RHO0, RHO1;;
+    RHO0.SetLength(n + 2);
+    RHO1.SetLength(n + 2);
+    Mden = R(1);
+    for(k = 1; k < n + 2; k++)
+    {
+        RHO0[k] = rho[k][0];
+        RHO1[k].SetDims(rho[k][0].NumRows(), rho[k][0].NumRows());
+        for(i = 0; i < n + 1; i++)
+        {
+            RHO0[k] += u[i] * rho[k][i + 1];
+            RHO1[k] += v[i] * rho[k][i + 1];
+        }
+        Mden *= rho_den[k];
+    }
+    Vec<int64_t> shift; //shift[k] = sum(map(len, cokernels_J_basis[:k]))
+    shift.SetLength(n + 1, 0);
+    for(k = 1; k < n + 1; k++)
+    {
+        shift[k] = shift[k-1] + cokernels_J_basis[k-1].length();
+    }
+    
+    /*
+     * let alpha be a basis element in J_k
+     * M(alpha) = (c_0, c_1, c_2, ..., c_k, 0, ...)
+     * where
+     * h_{k + 1} = alpha + v \in P_{k + 1}
+     * c_i = pi_{i} (h_i)  \in J_i  with i <= k
+     * h_i = rho_{i + 1) u + Y*v} (h_{i + 1}) \in P_i with i <= k
+     */
+    for(k = 0; k < n + 1; k++)
+    {
+        for(l = 0; l < cokernels_J_dimensions[k]; l++)
+        {
+            Vec<int64_t> &b = cokernels_J_basis[k][l];
+            int64_t b_coordinate = shift[k] + l; // as an element in cokernels_J_basis
+
+            // hi is represented as a list [hi0, hi1, ... ]
+            // where hi = \sum_k hik Y^k
+            // h_{k+1} \in P_{k + 1}
+            Vec< Vec<R> > hi;
+            hi.SetLength(1);
+            hi[0].SetLength( tuple_list[k+1].length() );
+            hi[0][ tuple_dict[k + 1][b + v] ] = Mden;
+            for(i = k + 1; i >= 0; i--)
+            {
+                assert_print(hi.length(), ==, (k + 1 - i) + 1);
+
+                //copy pi_i(hi) to the matrix
+                for(j = 0; j < hi.length(); j++)
+                {
+                    //hi \in P_i
+                    // ci = pi_i(h_i) \in J_i
+                    // cij corresponds to pi_i(h_ij)
+                    Vec<R> cij;
+                    cij = pi[i] * hi[j];
+                    if( pi_den[i] != R(1) )
+                        cij /= pi_den[i];
+
+                    for(l = 0; l < cokernels_J_dimensions[i]; l++)
+                        M[j][shift[i] + l][b_coordinate] += cij[l];
+                }
+
+                if(i > 0)
+                {
+                    //h_{i - 1} = \rho_{i} (hi) \in P_{i - 1}
+                    Vec< Vec<R> > hnew;
+                    hnew.SetLength( hi.length() + 1 );
+                    for(l = 0; l < hnew.length(); l++)
+                        hnew[l].SetLength( tuple_list[i - 1] );
+                    for(l = 0; l < hi.length(); l++)
+                    {
+                        hnew[l] += RHO0[i] * hi[l];
+                        hnew[l + 1] += RHO1[i] * hi[l];
+                    }
+                    if( rho_den[i] != R(1) )
+                        for(l = 0; l < hnew.length(); l++)
+                            hnew[l] /= rho_den[i];
+                    hi = hnew;
+                }
+
+            }
+        }
+    }
+
+
+    if( verbose > 2)
+        cout << "dr::get_reduction_matrix(u = "<<u<<", v = "<<v<<") done" << endl;
+}
+
+template<typename R>
+void dr<R>::reduce_vector_plain(Vec<R> &H, R &D, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t k, const Vec<R> &G)
+{
+    if( verbose > 2)
+        cout << "dr::reduce_vector_plain(u = "<<u<<", v = "<<v<<")" << endl;
+    int64_t i, l, dim_low;
+    dim_low = dim_J - cokernels_J_dimensions[n]; // sum(self.coKernels_J_dimensions[:self.n]) 
+    Mat<R> M;
+    R Mden;
+    get_reduction_matrix(M, Mden, u, v);
+    Vec<R> Gin, Gout;
+    Gin = G;
+    D = 1;
+    for(l = k - 1; l > 0; l--)
+    {
+        D *= Mden;
+        R lpower = 1;
+        Gout = M[0] * Gin;
+        for(i = 1; i < n + 1; i++)
+        {
+            lpower *= l;//lpower = l^i
+            Gout += lpower * (M[i] * Gin);
+        }
+        //taking advantage that \dim J_0 = 1
+        lpower *= l; //lpower = l^(n+1)
+        for(i = 0; i < cokernels_J_dimensions[n]; i++)
+            Gout[0] += lpower * M[n + 1][0][dim_low + i] * Gin[dim_low + i];
+
+        Gin = Gout;
+    }
+    H = M[0] * Gin;
+    D *= Mden;
+    if( verbose > 2)
+        cout << "dr::reduce_vector_plain(u = "<<u<<", v = "<<v<<") done" << endl;
+}
+
+template<typename R>
+void dr<R>::reduce_vector_finitediff(Vec<R> &H,  R &D, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t k, const Vec<R> &G)
+{
+    if( verbose > 2)
+        cout << "dr::reduce_vector_finitediff(u = "<<u<<", v = "<<v<<")" << endl;
+    if(k <= n +1)
+        reduce_vector_plain(H, D, u, v, k, G);
+    else
+    {
+        int64_t l, i, j;
+        Mat<R> M;
+        R Mden;
+        get_reduction_matrix(M, Mden, u, v);
+        H = G;
+        
+        // Mfd[l] = M(k - 1 - (self.n + 1) + l) 
+        // equivalently
+        // Mfd[n + 1 -l] = M(k - 1 - l)
+        // Mfd = [ sum( ( self.R(k - 1 - (self.n + 1) + l) ** i) * Mi for i, Mi in  enumerate(M) ) for l in range(self.n + 2) ];
+        Vec< Mat<R> > Mfd;
+        Mfd.SetLength(n + 2);
+        for(l = 0; l < n + 2; l++)
+        {
+            Mfd[l].SetDims(dim_J, dim_J);
+            for(i = 0; i < n + 2; i++)
+            {
+                R tmp;
+                tmp = powe( R(k - 1 - (n + 1) + l), i);
+                Mfd[l] += tmp * M[i];
+            }
+        }
+        for(l = 0; l < n + 2; l++)
+            //u v^{(k - 1 - l)  + 1} --> u v^{(k - 1 - l)}
+            // Mfd[n + 1 -l] = M(k - 1 - l)
+            H = Mfd[n + 1 - l] * H;
+
+        // make Mfd[l] = M[a, a - 1, ..., a - l]
+        // where a = k - 1 - (n + 1);
+        for(l = 1; l < n + 2; l++)
+            for(j = n + 1; j >= l; j--)
+                Mfd[j] -= Mfd[j - 1];
+
+        for(l = 0; l < (k - 1 - (n + 1)); l++)
+        {
+            // Mfd[0] =  M(k - 1 - (n + 1) - l)
+            // update Mfd vector
+            for(j = n; j >= 0; j--) // deg(M) = n + 1 ==> Mfd[n+1] is constant
+                Mfd[j] -= Mfd[j + 1];
+            // after
+            // Mfd[0] =  M(k - 1 - (n + 1) - l - 1)
+            H = Mfd[0] * H;
+        }
+        assert( Mfd[0] == M[0] );
+        D = power(Mden, k);
+    }
+    if( verbose > 2)
+        cout << "dr::reduce_vector_finitediff(u = "<<u<<", v = "<<v<<") done" << endl;
+}
+
+/*
+template<typename R>
+void dr<R>::monomial_to_basis(Vec<R> &res, const Vec<int64_t> &w, bool random)
+{
+
+}
+*/
 //FIXME
 /*
       def monomial_to_basis(self, w, random = False):
