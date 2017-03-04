@@ -7,6 +7,7 @@
 
 #include "linear_algebra.h"
 #include "tools.h"
+#include "timing.h"
 
 
 #include <cstdint>
@@ -591,22 +592,42 @@ void dr<R>::matrix_J(Mat<R> &result, int64_t d)
 template<typename R>
 void dr<R>::solve_system(Vec<int64_t> &B, Mat<R> &Unom, R &Udenom, const Mat<R> &T, const Vec<int64_t> &initB)
 {
+    timestamp_type time1, time2;
+    get_timestamp(&time1);
     ::solve_system_padic<R>(B, Unom, Udenom, T, initB, p, precision, fE);
+    get_timestamp(&time2);
+    if( verbose > 1)
+        printf("Time elapsed solve_system_padic (%lu x %lu matrix) %f s\n",(long unsigned)T.NumRows(), (long unsigned)T.NumCols(), timestamp_diff_in_seconds(time1,time2));
 }
 template <> inline void dr<ZZ>::solve_system(Vec<int64_t> &B, Mat<ZZ> &Unom, ZZ &Udenom, const Mat<ZZ> &T, const Vec<int64_t> &initB)
 {
+    timestamp_type time1, time2;
+    get_timestamp(&time1);
     ::solve_system(B, Unom, Udenom, T, initB);
+    get_timestamp(&time2);
+    if( verbose > 1)
+        printf("Time elapsed solve_system (%lu x %lu matrix) over ZZ %f s\n",(long unsigned)T.NumRows(), (long unsigned)T.NumCols(), timestamp_diff_in_seconds(time1,time2));
 }
 
 template<typename R>
 void dr<R>::cokernel_intersection(Vec<int64_t>  &res, Mat<R> &T, Mat<R> &S)
 {
+    timestamp_type time1, time2;
+    get_timestamp(&time1);
     ::cokernel_intersection_local(res, T, S, p, fE);
-}
+    get_timestamp(&time2);
+    if( verbose > 1)
+        printf("Time elapsed cokernel_intersection_local (%lu x %lu matrix) %f s\n",(long unsigned)T.NumRows(), (long unsigned)T.NumCols(), timestamp_diff_in_seconds(time1,time2));
+    }
 template<>
 inline void dr<ZZ>::cokernel_intersection(Vec<int64_t>  &res, Mat<ZZ> &T, Mat<ZZ> &S)
 {
+    timestamp_type time1, time2;
+    get_timestamp(&time1);
     ::cokernel_intersection(res, T, S);
+    get_timestamp(&time2);
+    if( verbose > 1)
+        printf("Time elapsed cokernel_intersection (%lu x %lu matrix) over ZZ %f s\n",(long unsigned)T.NumRows(), (long unsigned)T.NumCols(), timestamp_diff_in_seconds(time1,time2));
 }
 
 
@@ -968,5 +989,82 @@ void dr<R>::test_all()
     if( verbose > 0)
         cout << "dr::test_all() done" << endl;
 }
+//FIXME
+/*
+      def monomial_to_basis(self, w, random = False):
+        # input w \in P_m
+        # output: the coordinates of w in H^n in the torus
+        if self.verbose > 0:
+            print "dr.monomial_to_basis( %s )" % (w,)
+
+        u = vector(w);
+        m = u[0];
+        assert m > 0
+        G = vector([0] * self.dim_J );
+        G[0] = 1;
+        D = self.R(1);
+        # omega = (m-1)! u G \Omega / f^m
+        for e in range(m, 1, -1):
+            assert e == u[0]
+            # omega = w G
+            if random:
+                possible_v = sorted(self.tuple_list[1], key = lambda y: self.min_P(u - y));
+                minimal = self.min_P(u - possible_v[0]); 
+                assert minimal <= e - 1;
+                for k, v in enumerate(possible_v):
+                    if self.min_P(u - v) > minimal:
+                        break;
+                v = possible_v[ZZ.random_element(k)];
+
+            else:
+                for v in self.tuple_list[1]:
+                    if self.min_P(u - v) <= e - 1:
+                    #if self.polyhedron.contains(vector(QQ, (u - v)[1:])/(e - 1)):
+                       break;
+                else:
+                    assert False
+            u = u - v;
+            assert self.polyhedron.contains(vector(QQ, u[1:])/u[0]), "u = %s, v = %s" % (u + v, v, )
+
+            if self.verbose > 0:
+                print "u + v =  %s + %s --> u = %s" % (u, v, u, )
+                        
+            M, M_den = self.get_reduction_matrix(u, v);
+            G = M[0]*G;
+            D *= M_den;
+        assert u[0] == 1;
+        M, M_den = self.last_reduction;
+        G = M * (self.get_inclusion_matrix(u) * G)
+        D *= M_den
+
+        if m > 0:
+            D *=  factorial(m - 1)
+        return G, D
+
+            
+
+
+    def test_monomial_to_basis(self, N = 4, random = False):
+        if self.verbose > 0:
+            print "dr.test_monomial_to_basis(self, N = %d, random = %s)" % (N, random)
+        B = [];
+        for TL in self.basis_dR_T:
+            B += TL;
+        
+        for k in range(N + 1):
+            if self.verbose > 1:
+                print "testing if  v f^%d == v" % (k,)
+            for i, v in enumerate(B):
+                expected = vector([0] * self.dim_dR_T);
+                expected[i] = 1;
+                coeff = vector([0] * self.dim_dR_T);
+                for u, fu  in self.get_f_power(k).iteritems():
+                    c, d = self.monomial_to_basis( v + u, random = random );
+                    coeff += fu * c/d
+                if coeff != expected:
+                    print "while reducing v f^k, where v = %s N = %s" % (v, k)
+                    print "coeff != expected where i = %d, coeff = %s" % (i, c,)
+                    assert False
+*/
 
 #endif
