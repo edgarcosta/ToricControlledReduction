@@ -215,22 +215,52 @@ class dr{
         void init(const int64_t &p, const map< Vec<int64_t>, R, vi64less> &f, const Mat<int64_t> &AP, const Vec<int64_t> &bP, const  int64_t &verbose = 0, const bool &minimal = false);
 
         // computes matrix of the map
-        // (H0, \dots Hn) ---> h0 * f + \sum_\lambda Hi * \partial_\lambda f
-        // where Hi \in P_(d - 1), \lambda runs over a dual basis
+        // (H0, \dots Hn) ---> h0 * f + \sum_i Hi * \partial_i f
+        // where Hi \in P_(d - 1),  and \partial_i = x_i \partial / \partial x_i
         void matrix_J(Mat<R> &result, int64_t d);
 
-
+        /*
+         * Linear algebra, see linear_algebra.h for more details
+         */
+        // calls the appropriate version of solve_system(_padic) depending on R
         void solve_system(Vec<int64_t> &B, Mat<R> &Unom, R &Udenom, const Mat<R> &T, const Vec<int64_t> &initB);
+        // calls the appropriate version of cokernel_intersection(_local) depending on R
         void cokernel_intersection(Vec<int64_t>  &res, Mat<R> &T, Mat<R> &S);
 
+        /*
+         * reduction
+         */
+        // computes the coordinates of x^w / f^m in PH^{n-1} (Y)
+        // random = if takes a random path or not
+        void monomial_to_basis(Vec<R> &res, const Vec<int64_t> &w, bool random = false);
 
         /*
          * Test functions
          */
+        /*
+         * loops over u \in P_1, and checks if each entry of I_u
+         * I_u : J_0 + ... + J_n --> P_1 + P_2 + ... + P_{n+1}
+         * corresponds to the inclusion map
+         * J_i --> P_{i+1}, where ai -- >  u * a_i \in P_{i + 1} 
+         */
         void test_inclusion_matrices();
+        /*
+         * Recall that the last_reduction matrix 
+         * M: P_1 + .... + P_{n + 1} --- > P_1 + J_2 + ... + J_n
+         * wheree  (i - 1)! ai \in P^{i} ---> P_1 + J_2 +... + J_i
+         *
+         * test_last_reduction()
+         * loops over a basis of {u} of PH^{n-1}(Y)
+         * and checks if the last_reduction matrix maps
+         * u f^k / f^(\deg u + k) to u 
+         * for all k >= 0 such that \deg u + k < n + 1
+         */
         void test_last_reduction();
+        /*
+         * runs all the tests above
+         */
         void test_all();
-    
+
 };
 
 template<typename R>
@@ -788,6 +818,13 @@ void dr<R>::test_inclusion_matrices()
 {
     if(verbose > 2)
         cout<<"dr:test_inclusion_matrices()"<<endl;
+    /*
+     * loops over u \in P_1, and checks if each entry of I_u
+     * I_u : J_0 + ... + J_n --> P_1 + P_2 + ... + P_{n+1}
+     * corresponds to the inclusion map
+     * J_i --> P_{i+1}, where ai -- >  u * a_i \in P_{i + 1} 
+     */
+
     int64_t i, j, k;
     Vec< Vec<int64_t> > B, BJ;
     for(i = 1; i < n + 2; i++)
@@ -808,6 +845,7 @@ void dr<R>::test_inclusion_matrices()
             {
                 if( M[i][j] != 0 )
                 {
+                    assert_print(M[i][j], ==, 1);
                     assert_print(u + wj, ==, B[i]);
                     break;
                 }
@@ -901,6 +939,17 @@ void dr<R>::test_last_reduction()
     if( verbose > 2 )
         cout << "dr::test_last_reduction()" << endl;
 
+    /*
+     * Recall that the last_reduction matrix 
+     * M: P_1 + .... + P_{n + 1} --- > P_1 + J_2 + ... + J_n
+     * wheree  (i - 1)! ai \in P^{i} ---> P_1 + J_2 +... + J_i
+     *
+     * test_last_reduction()
+     * loops over a basis of {u} of PH^{n-1}(Y)
+     * and checks if the last_reduction matrix maps
+     * u f^k / f^(\deg u + k) to u 
+     * for all k >= 0 such that \deg u + k < n + 1
+     */
     Vec< Vec<int64_t> > B;
     int64_t i, j, k, shift;
     
