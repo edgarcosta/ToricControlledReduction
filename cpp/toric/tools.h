@@ -79,10 +79,8 @@ R binomial(int64_t n, int64_t k)
 template<class R>
 R  factorial(int64_t n, int64_t start = 1)
 {
-    int64_t i;
-    R result;
-    result = 1;
-    for(i = start; i <=n ; i++)
+    R result=R(1);
+    for(int64_t i = start; i <=n ; i++)
         result *= i;
     return result;
 }

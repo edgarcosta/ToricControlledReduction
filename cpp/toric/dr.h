@@ -302,6 +302,7 @@ void dr<R>::init(const int64_t &p, const map< Vec<int64_t>, R, vi64less> &f, con
     {
         init_solve_and_cokernels();
         init_rho_and_pi_matrices();
+        init_inclusion_matrices();
         init_last_reduction();
         init_proj();
     }
@@ -786,7 +787,7 @@ void dr<R>::test_inclusion_matrices()
             {
                 if( M[i][j] != 0 )
                 {
-                    assert(u + wj == B[i]);
+                    assert_print(u + wj, ==, B[i]);
                     break;
                 }
 
@@ -830,12 +831,14 @@ void dr<R>::init_last_reduction()
     }
     M.SetDims(total_rows, total_columns);
 
-    //P_1 --> P_1 is the identity map
-    for(k = 0; k < tuple_list[1].length(); k++)
-        M[k][k] = 1;
     D = 1;
     for(k = 2; k < n + 2; k++)
-        D *= rho_den[k];
+        D *= pi_den[k];
+    
+    //P_1 --> P_1 is the identity map
+    for(k = 0; k < tuple_list[1].length(); k++)
+        M[k][k] = D;
+    
 
     int64_t factorial = 1;
     for(k = 2; k < n + 2; k++)
@@ -901,8 +904,19 @@ void dr<R>::test_last_reduction()
             typename map< Vec<int64_t>, R, vi64less>::const_iterator fkit;
             for(fkit = f_power[k].cbegin(); fkit != f_power[k].cend(); fkit++)
                 G[shift + tuple_dict[k + v[0]][fkit->first + v]] += fkit->second;
-            print(last_reduction); 
-            assert_print(last_reduction_den * factorial<R>(k + v[0] - 1) * expected, ==, last_reduction * G);
+            if(  factorial<R>(k + v[0] - 1) * expected != last_reduction * G)
+            {
+                cout << "TEST FAILED" <<endl;
+                print(i);
+                print(k);
+                print(v);
+                print(G);
+                print(factorial<R>(k + v[0] - 1));
+                print(expected);
+                print(factorial<R>(k + v[0] - 1) * expected);
+                print(last_reduction * G);
+                abort();
+            }
         }
     }
     if( verbose > 2 )
