@@ -51,7 +51,45 @@ inline void conv(ZZ_pE& x, const ZZX& a){ conv(x, conv<ZZ_pX>(a)); }
 
 using namespace NTL;
 
-//extending Vec<T>
+/*
+ * binomial
+ */
+template<typename R> 
+R binomial(int64_t n, int64_t k)
+{
+    assert(n>=k);
+    R num, den;
+    int64_t i;
+    num = 1; // n!/k! = (k+1) ... n
+    den = 1; // (n-k)!
+    for( i = k + 1; i <= n; i++)
+    {
+        num *= i;
+    }
+    for( i = 1; i <= n - k; i++)
+    {
+        den *=i;
+    }
+    return num/den;
+}
+
+/*
+ * returns factorial(n)/factorial(start-1)
+ */
+template<class R>
+R  factorial(int64_t n, int64_t start = 1)
+{
+    int64_t i;
+    R result;
+    result = 1;
+    for(i = start; i <=n ; i++)
+        result *= i;
+    return result;
+}
+
+/*
+ * extending Vec<T>
+ */
 template<typename T>
 T sum(const Vec<T>& a)
 {
@@ -88,7 +126,9 @@ inline Vec<ZZ> operator/(const Vec<ZZ> &v, const ZZ &b)
     return res;
 }
 
-
+/*
+ * extending << and >>
+ */
 //istream for a map< Vec<T>, R, Compare>
 template<class T, class R, class Compare>
 NTL_SNS istream & operator>>(NTL_SNS istream& s, map< Vec<T>, R, Compare>& a)
@@ -274,6 +314,7 @@ inline int64_t min_intP(const Mat<int64_t> &AP, const Vec<int64_t> &bP, const Ve
     }
     return max;
 }
+
 
 // reverse dict
 template<class T, class Compare> void reverse_dict(map<T, int64_t, Compare> &dict, const Vec<T> &v)
