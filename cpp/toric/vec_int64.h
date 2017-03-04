@@ -18,7 +18,7 @@ using namespace NTL;
 
 //extending Vec<int64_t>
 
-bool operator< (const Vec<int64_t>& a, const Vec<int64_t>& b);
+bool operator<(const Vec<int64_t>& a, const Vec<int64_t>& b);
 
 typedef struct vec_int64_t_less
 {
