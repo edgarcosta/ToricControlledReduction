@@ -831,7 +831,7 @@ void dr<R>::init_last_reduction()
     M.SetDims(total_rows, total_columns);
 
     //P_1 --> P_1 is the identity map
-    for(k = 1; k < tuple_list[1].length(); k++)
+    for(k = 0; k < tuple_list[1].length(); k++)
         M[k][k] = 1;
     D = 1;
     for(k = 2; k < n + 2; k++)
@@ -901,8 +901,8 @@ void dr<R>::test_last_reduction()
             typename map< Vec<int64_t>, R, vi64less>::const_iterator fkit;
             for(fkit = f_power[k].cbegin(); fkit != f_power[k].cend(); fkit++)
                 G[shift + tuple_dict[k + v[0]][fkit->first + v]] += fkit->second;
-            
-            assert_print(factorial<R>(k + v[0] - 1) * expected, ==, last_reduction * G);
+            print(last_reduction); 
+            assert_print(last_reduction_den * factorial<R>(k + v[0] - 1) * expected, ==, last_reduction * G);
         }
     }
     if( verbose > 2 )
