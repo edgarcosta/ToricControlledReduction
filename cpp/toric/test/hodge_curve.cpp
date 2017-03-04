@@ -81,6 +81,7 @@ int main()
         }
     }
     {
+        //plane curve, genus 3
         Vec<int64_t> H;
         H.SetLength(3, 3);
         H[0] = 0;
@@ -105,6 +106,7 @@ int main()
     }
 
     {
+        //genus 9 curve
         Vec<int64_t> H;
         H.SetLength(3, 9);
         H[0] = 0;
@@ -128,6 +130,7 @@ int main()
     }
 
     {
+        //hyperelliptic curve of genus 10
         Vec<int64_t> H;
         H.SetLength(3, 10);
         H[0] = 0;
@@ -156,19 +159,4 @@ int main()
     
 }
     
-/*
-    
 
-    //C_{3,4} curve
-    const char c34[] = "43 \n[[0 3][0 0][4 0][1 0]]\n[42 1 1 1] \n[[ 0  1][ 1  0][-3 -4]] \n[0 0 12] \n";
-
-    //plane curve, genus 3
-    const char g3[] = "17 \n[[0 3][0 0][3 1][2 2][1 3][1 2][0 1][4 0][1 1][0 2][2 0][0 4]]\n[7 1 14 16 1 16 6 15 15 15 5 1] \n[[-1 -1][ 0  1][ 1  0]] \n[4 0 0] \n";
-
-    //genus 9 curve
-    const char g9[] = "37 \n[[-1 -1][ 0  4][ 3  0]]\n[1 1 36] \n[[ 5 -1][-1  4][-4 -3]] \n[4 3 12] \n"
-"[9 9]";
-
-    //hyperelliptic curve of genus 10
-    const char g10[] = "13 \n[[22  0][ 1  0][ 0  0][ 0  2]]\n[1 1 1 12] \n[[  0   1][  1   0][ -1 -11]] \n[0 0 22] \n";
-*/
