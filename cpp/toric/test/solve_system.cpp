@@ -5,7 +5,7 @@
 #include <iostream>
 #include <sstream>
 
-#define NTESTS 1
+#define NTESTS 10
 #define ZZbits 10
 
 template<class R>
