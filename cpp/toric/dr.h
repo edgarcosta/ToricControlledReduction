@@ -131,8 +131,9 @@ class dr{
         
 
         // Powers of f
-        // f_power[i] = f^i         
-        Vec<  map< Vec<int64_t>, R, vi64less> > f_power;
+        // f_power[i] = f^i 
+        // we must use append to extend f_power
+        Vec< map< Vec<int64_t>, R, vi64less> > f_power;
         // if needed computes f^N and adds it to the f_power list
         void init_f_power(int64_t N);
     
@@ -164,7 +165,7 @@ class dr{
         // constructed such that basis for I_i < basis for J_i
         // basis_dr_Y[i] = J_i or P_1 if i == 1
         // basis_dr_X[i] = I_i or P^*_1 if i == 1 FIXME: P^*_1 = I_1
-         Vec< Vec< Vec<int64_t> > >cokernels_J_basis, cokernels_I_basis, basis_dr_Y, basis_dr_X;
+        Vec< Vec< Vec<int64_t> > >cokernels_J_basis, cokernels_I_basis, basis_dr_Y, basis_dr_X;
         // reverse maps
         Vec< map< Vec<int64_t>, int64_t, vi64less> > cokernels_J_basis_dict, cokernels_I_basis_dict, basis_dr_Y_dict, basis_dr_X_dict;
         // \dim PH^{n-1} (Y) and \dim PH^{n-1} (X)
@@ -313,8 +314,8 @@ class dr{
         // in a naive way, only using get_reduction_matrix
         // computes the coordinates of x^w / f^m in PH^{n-1} (Y) 
         // random = if takes a random path or not
-        void monomial_to_basis(Vec<R> &res, const Vec<int64_t> &w, bool random = false);
-
+        void monomial_to_basis(Vec<R> &res, R &den, const Vec<int64_t> &w, bool random = false);
+        
 
         /*
          * Test functions
@@ -338,10 +339,25 @@ class dr{
          * for all k >= 0 such that \deg u + k < n + 1
          */
         void test_last_reduction();
+
+        /*
+         * tests if f^k v \equiv v for v a basis element and k <= N
+         */
+        void test_monomial_to_basis(int64_t N = 1, bool random = false);
+
         /*
          * runs all the tests above
          */
-        void test_all();
+        void test_all()
+        {
+            if( verbose > 0)
+                cout << "dr::test_all()" << endl;
+            test_last_reduction();
+            test_inclusion_matrices();
+            test_monomial_to_basis();
+            if( verbose > 0)
+                cout << "dr::test_all() done" << endl;
+        }
 
 };
 
@@ -411,6 +427,7 @@ void dr<R>::init(const int64_t &p, const map< Vec<int64_t>, R, vi64less> &f, con
 
     init_tuples();
     init_cokernels_I_basis();
+    f_power.SetLength(0);
     if(not minimal)
     {
         init_solve_and_cokernels();
@@ -450,9 +467,13 @@ void dr<R>::init_tuples()
     
     tuple_dict.SetLength(n + 2);
     tuple_int_dict.SetLength(n + 2);
-    
-    //returns true if v \in k*P  and w \notin k*P for some k, i.e., min_P(v) < min_P(w)
-    auto minPless = [=](const Vec<int64_t> &v, const Vec<int64_t> &w){return ::min_intP(AP, bP, v) < ::min_intP(AP, bP, w);};
+    //changing the length afterwards is troublesome, as maps are not "relocatable"
+    tuple_dict.FixAtCurrentLength();
+    tuple_int_dict.FixAtCurrentLength();
+
+
+    //returns false if v \in k*P  and w \notin k*P for some k, i.e., min_P(v) < min_P(w)
+    auto minPcompare = [=](const Vec<int64_t> &v, const Vec<int64_t> &w){return ::min_P(AP, bP, v) > ::min_P(AP, bP, w);};
  
 
 
@@ -460,8 +481,8 @@ void dr<R>::init_tuples()
     {
         //we want the integral points to sorted by minPless and then by vi64less
         sort(tuple_int_list[i].begin(), tuple_int_list[i].end(), vi64less() );
-        stable_sort(tuple_int_list[i].begin(), tuple_int_list[i].end(), minPless);
-        stable_sort(tuple_list[i].begin(), tuple_list[i].end(), minPless);
+        stable_sort(tuple_int_list[i].begin(), tuple_int_list[i].end(), minPcompare);
+        stable_sort(tuple_list[i].begin(), tuple_list[i].end(), minPcompare);
         reverse_dict(tuple_dict[i], tuple_list[i]);
         reverse_dict(tuple_int_dict[i], tuple_int_list[i]);
     }
@@ -475,38 +496,54 @@ void dr<R>::init_f_power(int64_t N)
 {
     if(verbose > 2)
         cout<<"dr::init_f_power("<<N<<")"<<endl;
-    if( f_power.length() == 0)
+    if(f_power.length() < N + 1)
     {
-        f_power.SetLength(1);
-        Vec<int64_t> zero;
-        zero.SetLength(n + 1, 0);
-        f_power[0][zero] = R(1);
-    }
-    
-    if( f_power.length() < N + 1)
-    {
-        int64_t k;
-        k = f_power.length();
-        f_power.SetLength(N + 1);
-        typename map< Vec<int64_t>, R, vi64less>::const_iterator fit, git;
-        Vec<int64_t> u;
+        // maps are not "reallocatable", this avoids the issue
+        Vec< map< Vec<int64_t>, R, vi64less> > fpow;
+        //copy f_power to fpow 
+        fpow.SetMaxLength(N + 1);
+        fpow.SetLength(f_power.length());
+        for(int64_t i = 0; i < f_power.length(); i++)
+            fpow[i] = f_power[i];
 
-        for(; k < N + 1; k++)
+        //deal with the corner case that we have not done anything yet
+        if( fpow.length() < 2)
         {
-             for(git = f_power[k - 1].begin(); git != f_power[k - 1].end(); git++)
-             {
-                for(fit = f.begin(); fit != f.end(); fit++)
+            fpow.SetLength(2);
+            Vec<int64_t> zero;
+            zero.SetLength(n + 1, 0);
+            fpow[0][zero] = R(1);
+            fpow[1]  = f;
+        }
+        while(fpow.length() < N + 1)
+        {
+            int64_t k = fpow.length();
+            typename map< Vec<int64_t>, R, vi64less>::const_iterator fit, git;
+            typename map< Vec<int64_t>, R, vi64less>::iterator itfk;
+            map< Vec<int64_t>, R, vi64less> Y;
+            Vec<int64_t> u;
+            for(git = fpow[k - 1].cbegin(); git != fpow[k - 1].cend(); git++)
+            {
+                for(fit = f.cbegin(); fit != f.cend(); fit++)
                 {
                     u = fit->first + git->first;
-                    f_power[k][u] += fit->second * git->second;
+                    itfk = Y.find(u);
+                    if(itfk == Y.end())
+                        Y[u] = fit->second * git->second;
+                    else
+                        itfk->second += fit->second * git->second;
                 }
-             }
-
+            }
+            fpow.append(Y);
         }
+        //replace f_power with fpow (which wasn't reallocated
+        f_power = fpow;
     }
+    assert_print(f_power.length(), >=, N + 1);
     if(verbose > 2)
         cout<<"dr::init_f_power("<<N<<") done"<<endl;
 }
+
 template<typename R>
 void dr<R>::init_solve_and_cokernels()
 {
@@ -518,7 +555,7 @@ void dr<R>::init_solve_and_cokernels()
     ci.SetLength(n + 2);
     for(i = 0; i < n + 2; i++)
         ci[i] = tuple_list[i].length();
-    
+
     // \sum rank(J_i) T^i = (1- T)^(n+1) \sum rank(P_i) T^i
     ZZX P, Q, tmp; // Q = 1 - T
     SetCoeff(Q, 0, 1);
@@ -538,6 +575,9 @@ void dr<R>::init_solve_and_cokernels()
     
     cokernels_J_basis.SetLength(n + 2);
     cokernels_J_basis_dict.SetLength(n + 2);
+    //changing the length afterwards is troublesome, as maps are not "relocatable"
+    cokernels_J_basis_dict.FixAtCurrentLength();
+
     solve_matrix.SetLength(n + 2);
     solve_denom.SetLength(n + 2);
     for(i = n + 1; i >= 0; i--)
@@ -586,9 +626,15 @@ void dr<R>::init_solve_and_cokernels()
     // PH^{n-1} (X) = P^*_1 + I_2 + ... + I_n 
     basis_dr_Y.SetLength(n+1);
     basis_dr_Y_dict.SetLength(n+1);
+    
 
     basis_dr_X.SetLength(n+1);
     basis_dr_X_dict.SetLength(n+1);
+
+    //changing the length afterwards is troublesome, as maps are not "relocatable"
+    basis_dr_Y_dict.FixAtCurrentLength();
+    basis_dr_X_dict.FixAtCurrentLength();
+
 
     basis_dr_Y[0].SetLength(0);
     basis_dr_Y[1] = tuple_list[1];
@@ -612,6 +658,7 @@ void dr<R>::init_solve_and_cokernels()
         reverse_dict(basis_dr_X_dict[i], basis_dr_X[i]);
         dim_dr_X += cokernels_I_basis[i].length();
     }
+
     if(verbose > 2)
         cout<<"dr::init_solve_and_cokernels() done"<<endl;
 }
@@ -624,6 +671,8 @@ void dr<R>::init_cokernels_I_basis()
     cokernels_I_dimensions.SetLength(n + 1, 0);
     cokernels_I_basis.SetLength(n + 1);
     cokernels_I_basis_dict.SetLength(n + 1);
+    //changing the length afterwards is troublesome, as maps are not "relocatable"
+    cokernels_I_basis_dict.FixAtCurrentLength();
     for(int64_t d = 1; d < n + 1; d++)
     {
         init_cokernels_I_basis(d);
@@ -712,6 +761,7 @@ void dr<R>::solve_system(Vec<int64_t> &B, Mat<R> &Unom, R &Udenom, const Mat<R> 
     if( verbose > 1)
         printf("Time elapsed solve_system_padic (%lu x %lu matrix) %f s\n",(long unsigned)T.NumRows(), (long unsigned)T.NumCols(), timestamp_diff_in_seconds(time1,time2));
 }
+
 template <> inline void dr<ZZ>::solve_system(Vec<int64_t> &B, Mat<ZZ> &Unom, ZZ &Udenom, const Mat<ZZ> &T, const Vec<int64_t> &initB)
 {
     timestamp_type time1, time2;
@@ -1007,6 +1057,7 @@ void dr<R>::init_last_reduction()
             if( rho_den[k] != 1)
                 for(i = 0; i < H.length(); i++)
                     H[i] /= rho_den[k];
+
             for(i = 0; i < H.length(); i++)
                 M[i][ shift_columns[k] + j] += H[i];
         }
@@ -1057,6 +1108,7 @@ void dr<R>::test_last_reduction()
             typename map< Vec<int64_t>, R, vi64less>::const_iterator fkit;
             for(fkit = f_power[k].cbegin(); fkit != f_power[k].cend(); fkit++)
                 G[shift + tuple_dict[k + v[0]][fkit->first + v]] += fkit->second;
+
             if(  factorial<R>(k + v[0] - 1) * expected != last_reduction * G)
             {
                 cout << "TEST FAILED" <<endl;
@@ -1108,19 +1160,7 @@ void dr<R>::init_proj()
 
 
 }
-template<typename R>
-void dr<R>::test_all()
-{
-    if( verbose > 0)
-        cout << "dr::test_all()" << endl;
-    test_last_reduction();
-    test_inclusion_matrices();
-    //FIXME
-    //test_monomial_to_basis();
 
-    if( verbose > 0)
-        cout << "dr::test_all() done" << endl;
-}
 
 template<typename R>
 void dr<R>::get_reduction_matrix(Vec< Mat<R> > &M, R &Mden, const Vec<int64_t> &u, const Vec<int64_t> &v)
@@ -1131,11 +1171,11 @@ void dr<R>::get_reduction_matrix(Vec< Mat<R> > &M, R &Mden, const Vec<int64_t> &
     //asserts \deg v == 1
     assert_print(v[0], ==, 1);
 
-    int64_t i, j, k, l;
+    int64_t i, j, k, l, z;
 
 
     // M = M[0] + M[1] * T + ... + M[n] * T^(n + 1)
-    M.clear();
+    M.kill();
     M.SetLength(n + 2);
     for(i = 0; i < n + 2; i++)
         M[i].SetDims(dim_J, dim_J);
@@ -1148,7 +1188,7 @@ void dr<R>::get_reduction_matrix(Vec< Mat<R> > &M, R &Mden, const Vec<int64_t> &
     for(k = 1; k < n + 2; k++)
     {
         RHO0[k] = rho[k][0];
-        RHO1[k].SetDims(rho[k][0].NumRows(), rho[k][0].NumRows());
+        RHO1[k].SetDims(rho[k][0].NumRows(), rho[k][0].NumCols());
         for(i = 0; i < n + 1; i++)
         {
             RHO0[k] += u[i] * rho[k][i + 1];
@@ -1173,10 +1213,10 @@ void dr<R>::get_reduction_matrix(Vec< Mat<R> > &M, R &Mden, const Vec<int64_t> &
      */
     for(k = 0; k < n + 1; k++)
     {
-        for(l = 0; l < cokernels_J_dimensions[k]; l++)
+        for(z = 0; z < cokernels_J_dimensions[k]; z++)
         {
-            Vec<int64_t> &b = cokernels_J_basis[k][l];
-            int64_t b_coordinate = shift[k] + l; // as an element in cokernels_J_basis
+            Vec<int64_t> &b = cokernels_J_basis[k][z];
+            int64_t b_coordinate = shift[k] + z; // as an element in cokernels_J_basis
 
             // hi is represented as a list [hi0, hi1, ... ]
             // where hi = \sum_k hik Y^k
@@ -1198,7 +1238,7 @@ void dr<R>::get_reduction_matrix(Vec< Mat<R> > &M, R &Mden, const Vec<int64_t> &
                     Vec<R> cij;
                     cij = pi[i] * hi[j];
                     if( pi_den[i] != R(1) )
-                        cij /= pi_den[i];
+                        cij = cij/pi_den[i];
 
                     for(l = 0; l < cokernels_J_dimensions[i]; l++)
                         M[j][shift[i] + l][b_coordinate] += cij[l];
@@ -1210,7 +1250,7 @@ void dr<R>::get_reduction_matrix(Vec< Mat<R> > &M, R &Mden, const Vec<int64_t> &
                     Vec< Vec<R> > hnew;
                     hnew.SetLength( hi.length() + 1 );
                     for(l = 0; l < hnew.length(); l++)
-                        hnew[l].SetLength( tuple_list[i - 1] );
+                        hnew[l].SetLength( tuple_list[i - 1].length() );
                     for(l = 0; l < hi.length(); l++)
                     {
                         hnew[l] += RHO0[i] * hi[l];
@@ -1218,7 +1258,8 @@ void dr<R>::get_reduction_matrix(Vec< Mat<R> > &M, R &Mden, const Vec<int64_t> &
                     }
                     if( rho_den[i] != R(1) )
                         for(l = 0; l < hnew.length(); l++)
-                            hnew[l] /= rho_den[i];
+                            hnew[l] = hnew[l]/rho_den[i];
+
                     hi = hnew;
                 }
 
@@ -1326,89 +1367,125 @@ void dr<R>::reduce_vector_finitediff(Vec<R> &H,  R &D, const Vec<int64_t> &u, co
         cout << "dr::reduce_vector_finitediff(u = "<<u<<", v = "<<v<<") done" << endl;
 }
 
-/*
+
+
 template<typename R>
-void dr<R>::monomial_to_basis(Vec<R> &res, const Vec<int64_t> &w, bool random)
+void dr<R>::monomial_to_basis(Vec<R> &G, R &D, const Vec<int64_t> &w, bool random)
 {
+    if(verbose > 1)
+        cout << "dr::monomial_to_basis(w = "<<w<<")" << endl;
+    int64_t e, i, m;
+    Vec<int64_t> u, v;
+    // w \in P_m
+    m = w[0];
+    u = w;
+    
+    G.kill(); 
+    G.SetLength(dim_J, R(0));
+    G[0] = 1;
+    D = 1;
+
+
+    // W = (m-1)! u G / f^m \omega
+    for(e = m; e > 1; e--)
+    {
+        assert_print(e, ==, u[0]);
+        if( random )
+        {
+            while(true)
+            {
+                v =  tuple_list[1][rand() % tuple_list[1].length()];
+                if( min_P(u - v) <= e - 1)
+                    break;
+            }
+        }
+        else
+        {
+            for(i = 0; i < tuple_list[1].length(); i++)
+            {
+                v = tuple_list[1][i];
+                if( min_P(u - v) <= e - 1)
+                    break;
+            }
+        }
+        u = u - v;
+        if(verbose > 2)
+            cout << "\t" << u << " + " << v <<" --> "<<u<<endl;
+        Vec< Mat<R> > M;
+        R Mden;
+        get_reduction_matrix(M, Mden, u, v);
+        G = M[0]*G;
+        D *= Mden;
+    }
+    assert_print(u[0], ==, 1);
+    G = last_reduction * (inclusion_matrices[tuple_dict[1][u]] * G);
+    D *= last_reduction_den;
+
+    if( m > 0 )
+        D *= factorial<R>(m - 1);
+    if(verbose > 1)
+        cout << "dr::monomial_to_basis(w = "<<w<<") done" << endl;
+}
+
+
+template<typename R>
+void dr<R>::test_monomial_to_basis(int64_t N, bool random)
+{
+    if( verbose > 1 )
+        cout << "dr::test_monomial_to_basis()" << endl;
+
+    Vec< Vec<int64_t> > B;
+    int64_t i, k;
+    
+    for(i = 0; i < basis_dr_Y.length(); i++)
+        B.append( basis_dr_Y[i] );
+
+    init_f_power(N);
+    for(k = 0; k < N + 1; k++)
+    {
+        if(verbose > 2)
+            cout << "testing if  v f^"<<k<<" == v"<<endl;
+    
+        for(i = 0; i < B.length(); i++)
+        {
+            Vec<int64_t> &v = B[i];
+            Vec<R> expected, res;
+            expected.SetLength(B.length(), R(0));
+            res.SetLength(B.length(), R(0));
+            expected[i] = 1;
+            typename map< Vec<int64_t> , R, vi64less>::const_iterator fit;
+            R resden;
+            resden = 0;
+            for(fit = f_power[k].cbegin(); fit != f_power[k].cend(); fit++)
+            {
+                Vec<R> G;
+                R D;
+                monomial_to_basis(G, D, fit->first + v, random);
+                if(resden == 0)
+                    resden = D;
+                else
+                    assert_print(resden, ==, D);
+
+                res += fit->second * G;
+            }
+
+            if( resden * expected !=  res)
+            {
+                cout << "TEST FAILED" <<endl;
+                print(k);
+                print(v);
+                print(expected);
+                print(res);
+                print(resden);
+                abort();
+            }
+        }
+    }
+    if( verbose > 2 )
+        cout << "dr::test_monomial_to_basis() done" << endl;
+
 
 }
-*/
-//FIXME
-/*
-      def monomial_to_basis(self, w, random = False):
-        # input w \in P_m
-        # output: the coordinates of w in H^n in the torus
-        if self.verbose > 0:
-            print "dr.monomial_to_basis( %s )" % (w,)
 
-        u = vector(w);
-        m = u[0];
-        assert m > 0
-        G = vector([0] * self.dim_J );
-        G[0] = 1;
-        D = self.R(1);
-        # omega = (m-1)! u G \Omega / f^m
-        for e in range(m, 1, -1):
-            assert e == u[0]
-            # omega = w G
-            if random:
-                possible_v = sorted(self.tuple_list[1], key = lambda y: self.min_P(u - y));
-                minimal = self.min_P(u - possible_v[0]); 
-                assert minimal <= e - 1;
-                for k, v in enumerate(possible_v):
-                    if self.min_P(u - v) > minimal:
-                        break;
-                v = possible_v[ZZ.random_element(k)];
-
-            else:
-                for v in self.tuple_list[1]:
-                    if self.min_P(u - v) <= e - 1:
-                    #if self.polyhedron.contains(vector(QQ, (u - v)[1:])/(e - 1)):
-                       break;
-                else:
-                    assert False
-            u = u - v;
-            assert self.polyhedron.contains(vector(QQ, u[1:])/u[0]), "u = %s, v = %s" % (u + v, v, )
-
-            if self.verbose > 0:
-                print "u + v =  %s + %s --> u = %s" % (u, v, u, )
-                        
-            M, M_den = self.get_reduction_matrix(u, v);
-            G = M[0]*G;
-            D *= M_den;
-        assert u[0] == 1;
-        M, M_den = self.last_reduction;
-        G = M * (self.get_inclusion_matrix(u) * G)
-        D *= M_den
-
-        if m > 0:
-            D *=  factorial(m - 1)
-        return G, D
-
-            
-
-
-    def test_monomial_to_basis(self, N = 4, random = False):
-        if self.verbose > 0:
-            print "dr.test_monomial_to_basis(self, N = %d, random = %s)" % (N, random)
-        B = [];
-        for TL in self.basis_dR_T:
-            B += TL;
-        
-        for k in range(N + 1):
-            if self.verbose > 1:
-                print "testing if  v f^%d == v" % (k,)
-            for i, v in enumerate(B):
-                expected = vector([0] * self.dim_dR_T);
-                expected[i] = 1;
-                coeff = vector([0] * self.dim_dR_T);
-                for u, fu  in self.get_f_power(k).iteritems():
-                    c, d = self.monomial_to_basis( v + u, random = random );
-                    coeff += fu * c/d
-                if coeff != expected:
-                    print "while reducing v f^k, where v = %s N = %s" % (v, k)
-                    print "coeff != expected where i = %d, coeff = %s" % (i, c,)
-                    assert False
-*/
 
 #endif

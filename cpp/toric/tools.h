@@ -144,19 +144,19 @@ NTL_SNS istream & operator>>(NTL_SNS istream& s, map< Vec<T>, R, Compare>& a)
     return s;
 }
 
-//ostream for a map< Vec<uint64_t>, T, vu64less>
+//ostream for a map< Vec<T>, R, Compare>
 template<class T, class R, class Compare>
 NTL_SNS ostream & operator<<(NTL_SNS ostream& s, const  map< Vec<T>, R, Compare>& a)
 {
     class map< Vec<T>, R, Compare>::const_iterator it;
     int64_t i;
 
-    Vec< Vec<T> > monomials;
+    Mat<T>  monomials;
     Vec<R> coefficients;
         
-    monomials.SetDims(a.size(), a.begin()->first.length());
+    monomials.SetDims(a.size(), a.cbegin()->first.length());
     coefficients.SetLength(a.size());
-    for(i = 0, it = a.begin(); it != a.end(); it++, i++)
+    for(i = 0, it = a.cbegin(); it != a.cend(); it++, i++)
     {
         monomials[i] = it->first;
         coefficients[i] = it->second;
@@ -191,7 +191,7 @@ NTL_SNS ostream & operator<<=(NTL_SNS ostream& s, const map< Vec<T>, R, Compare>
     i = 0;
     n = a.size();
     typename  map< Vec<T>, R, Compare>::const_iterator it;
-    for(it = a.begin() ; a.end() != it ; ++it)
+    for(it = a.cbegin() ; a.cend() != it ; ++it)
     {
         s <<= it->first;
         s << ": ";
