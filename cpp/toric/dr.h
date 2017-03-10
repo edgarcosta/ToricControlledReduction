@@ -1577,7 +1577,7 @@ void dr<R>::frob_matrix(Mat<R> &res, Vec<int64_t> N, bool method)
 template<typename R>
 void dr<R>::frob_monomial(Vec<R> &F, const Vec<int64_t> &w, int64_t N, bool method)
 {
-    assert_print(p, ==, 0);
+    assert_print(p, !=, 0);
     if(verbose > 0)
         cout <<"dr<R>::frob_monomial("<<w<<", "<<N<<") "<<endl;
     
