@@ -24,6 +24,16 @@
 using namespace std;
 using namespace NTL;
 
+//extending Mat<ZZ>
+//
+//computes the characteristic polynomial of M using Newton identities
+// = det(I*X - M) = X^n - trace(M)*X^(n - 1) + ... 
+Vec<ZZ> charpoly(const Mat<ZZ> &M);
+// computes the trace
+ZZ trace(const Mat<ZZ> &M);
+
+
+
 //R = ZZ, ZZ_p, zz_p. ZZ_pE, or zz_pE
 
 
@@ -58,12 +68,19 @@ void inverse(R &d, Mat<R> &X, const Mat<R> &A)
     inv(X, A);
     d = R(1);
 }
-
+template<> 
 inline void inverse(ZZ &d, Mat<ZZ> &X, const Mat<ZZ> &A)
 {
     inv(d, X, A);
 }
 
+// K = T.left_kernel();
+inline void kernel(Mat<ZZ> &K,  Mat<ZZ> &T)
+{   
+    ZZ det2;
+    int64_t r = image(det2, T, K);
+    K.SetDims(K.NumRows() - r, K.NumCols());
+}
 
 /*
  * 
@@ -288,9 +305,9 @@ void solve_system_local_lzz_pE(Vec<int64_t> &B,  Mat<R> &Unom, const Mat<R> &T, 
     T_ZZX = conv< Mat<ZZX> >( T );
     Mat<ZZX> U_ZZX;
    {
-       zz_pPush push(p);
+       zz_pPush push1(p);
        {
-            zz_pEPush push(conv<zz_pX>(f));
+            zz_pEPush push2(conv<zz_pX>(f));
             zz_pE Udenom;
             Mat<zz_pE> U_Fq;
             Mat<zz_pE> T_Fq;
@@ -325,13 +342,8 @@ inline void solve_system_local(Vec<int64_t> &B,  Mat<ZZ_pE> &Unom, const Mat<ZZ_
 }
 
 
-// K = T.left_kernel();
-inline void kernel(Mat<ZZ> &K,  Mat<ZZ> &T)
-{
-    ZZ det2;
-    int64_t r = image(det2, T, K);
-    K.SetDims(K.NumRows() - r, K.NumCols());
-}
+
+
 
 // given two maps T : R^k -> R^n, S: R^l -> R^n, where T is injective,
 // computes the columns of T not in img(T) \cap img(S)
@@ -398,9 +410,9 @@ void cokernel_intersection_local_lzz_pE(Vec<int64_t> &res, const Mat<R> &T, Mat<
     Mat<ZZX> T_ZZX = conv< Mat<ZZX> >( T );
     Mat<ZZX> S_ZZX = conv< Mat<ZZX> >( S );
     {
-       zz_pPush push(p);
+       zz_pPush push1(p);
        {
-            zz_pEPush push(conv<zz_pX>(f));
+            zz_pEPush push2(conv<zz_pX>(f));
             zz_pE Udenom;
             Mat<zz_pE> T_Fq = conv< Mat<zz_pE> >(T_ZZX);
             Mat<zz_pE> S_Fq = conv< Mat<zz_pE> >(S_ZZX);
