@@ -47,42 +47,62 @@ inline void conv(ZZX& x, const zz_pE& a){ conv(x, rep(a)); }
 inline void conv(ZZX& x, const ZZ_pE& a){ conv(x, rep(a)); }
 inline void conv(zz_pE& x, const ZZX& a){ conv(x, conv<zz_pX>(a)); }
 inline void conv(ZZ_pE& x, const ZZX& a){ conv(x, conv<ZZ_pX>(a)); }
+
+template<typename T, typename R, typename S, typename Compare>
+inline void conv(map< T, R, Compare> &x, const map< T, S, Compare> &y)
+{
+    x.clear();
+    typename map< T, S, Compare>::const_iterator yit;
+    for(yit = y.cbegin(); yit != y.cend(); yit++)
+        x[yit->first] = conv<R>(yit->second);
+}
 }
 
 using namespace NTL;
 
-/*
- * binomial
- */
-template<typename R> 
-R binomial(int64_t n, int64_t k)
-{
-    assert(n>=k);
-    R num, den;
-    int64_t i;
-    num = 1; // n!/k! = (k+1) ... n
-    den = 1; // (n-k)!
-    for( i = k + 1; i <= n; i++)
-    {
-        num *= i;
-    }
-    for( i = 1; i <= n - k; i++)
-    {
-        den *=i;
-    }
-    return num/den;
-}
+//TODO add frobenius
+
+
+
+//returns binomial(n, k)
+ZZ binomial(int64_t n, int64_t k);
 
 /*
  * returns factorial(n)/factorial(start-1)
  */
-template<class R>
-R  factorial(int64_t n, int64_t start = 1)
+template<typename R>
+R  factorial(const int64_t &n, const int64_t &start = 1)
 {
     R result=R(1);
     for(int64_t i = start; i <=n ; i++)
         result *= i;
     return result;
+}
+
+int64_t valuation_of_factorial(const int64_t n, const int64_t p);
+
+template<typename R> void factorial_padic(R &result, int64_t &val, const int64_t &n, const int64_t &p, const int64_t &start = 1)
+{
+    result = 1;
+    val = 0;
+    int64_t i, tmp;
+    for(i = start; i <= n; i++)
+    {
+        if(i%p != 0)
+            result *= i;
+        else
+        {
+            tmp = i;
+            while(tmp%p == 0)
+            {
+                tmp /= p;
+                val++;
+            }
+            result *= tmp;
+        }
+    }
+    if( start == 1)
+        assert_print(val, ==, valuation_of_factorial(n, p));
 }
 
 /*
@@ -124,11 +144,32 @@ inline Vec<ZZ> operator/(const Vec<ZZ> &v, const ZZ &b)
     return res;
 }
 
+template<typename T>
+T max(const Vec<T> &v)
+{
+    T m = v[0];
+    for(int64_t i = 1; i < v.length(); i++)
+        if(v[i] > m)
+            m = v[i];
+    return m;
+}
+template<typename T>
+T min(const Vec<T> &v)
+{
+    T m = v[0];
+    for(int64_t i = 1; i < v.length(); i++)
+        if(v[i] < m)
+            m = v[i];
+    return m;
+}
+
+
+
 /*
  * extending << and >>
  */
 //istream for a map< Vec<T>, R, Compare>
-template<class T, class R, class Compare>
+template<typename T, typename R, typename Compare>
 NTL_SNS istream & operator>>(NTL_SNS istream& s, map< Vec<T>, R, Compare>& a)
 {
     Vec< Vec<T> > monomials;
@@ -145,10 +186,10 @@ NTL_SNS istream & operator>>(NTL_SNS istream& s, map< Vec<T>, R, Compare>& a)
 }
 
 //ostream for a map< Vec<T>, R, Compare>
-template<class T, class R, class Compare>
+template<typename T, typename R, typename Compare>
 NTL_SNS ostream & operator<<(NTL_SNS ostream& s, const  map< Vec<T>, R, Compare>& a)
 {
-    class map< Vec<T>, R, Compare>::const_iterator it;
+    typename map< Vec<T>, R, Compare>::const_iterator it;
     int64_t i;
 
     Mat<T>  monomials;
@@ -167,7 +208,7 @@ NTL_SNS ostream & operator<<(NTL_SNS ostream& s, const  map< Vec<T>, R, Compare>
 }
 
 //similar to << but more human readable and compatible with sage 
-template<class T>
+template<typename T>
 NTL_SNS ostream & operator<<=(NTL_SNS ostream& s, const Vec<T>& a)
 {
     int64_t i, n;
@@ -183,7 +224,7 @@ NTL_SNS ostream & operator<<=(NTL_SNS ostream& s, const Vec<T>& a)
 }
 
 //similar to << but more human readable and compatible with sage
-template<class T, class R, class Compare>
+template<typename T, typename R, typename Compare>
 NTL_SNS ostream & operator<<=(NTL_SNS ostream& s, const map< Vec<T>, R, Compare>& a)
 {
     s << "{";
@@ -209,30 +250,8 @@ NTL_SNS ostream & operator<<=(NTL_SNS ostream& s, const map< Vec<T>, R, Compare>
 
 // res = [0, 1, ..., n - 1] \ B, i.e, the complement of B
 // assumes B \subset [0, 1, ..., n - 1]
-inline void complement(Vec<int64_t> &res, const int64_t n, const Vec<int64_t> B)
-{
-    int64_t i, j, position;
-    res.SetLength(n - B.length());
-    i = 0;
-    position = 0;
-    for(j = 0; j < B.length(); j++)
-    {
-        while(i < B[j]  && i < n)
-        {
-            res[position] = i;
-            i++;
-            position++;
-        }
-        i++;
-    }
-    while(i < n)
-    {
-        res[position] = i;
-        i++;
-        position++;
-    }
-    assert_print(position, ==, n - B.length());
-}
+void complement(Vec<int64_t> &res, const int64_t n, const Vec<int64_t> B);
+
 
 
 
@@ -253,69 +272,15 @@ inline void complement(Vec<int64_t> &res, const int64_t n, const Vec<int64_t> B)
 void integral_points(Vec< Vec< Vec< int64_t > > > &points, Vec< Vec< Vec<int64_t> > > &interior_points, const Mat<int64_t> &AP, const Vec<int64_t> &bP, const Vec< Vec<int64_t> > &Pvertices, const int64_t &N);
 
 // returns the minimal k such that v \in k*P
-inline int64_t min_P(const Mat<int64_t> &AP, const Vec<int64_t> &bP, const Vec<int64_t> &v)
-{
-    //v \in k*P iff AP*v + k*bP >= 0;
-    int64_t i, j, max, tmp;
-    Vec<int64_t> w;
-    w.SetLength(bP.length(), 0);
-    // v[0] is just a dumb variable to potentially keep track the degree where v came from
-    assert_print(AP.NumCols() + 1, ==, v.length());
-    assert_print(AP.NumRows(), ==,  bP.length());
-    // w = Ap * v[1:]
-    for(i = 0; i < AP.NumRows(); i++)
-        for(j = 0; j < AP.NumCols(); j++)
-            w[i] += AP[i][j] * v[j + 1];
-    max = -1;
-    for(i = 0; i < bP.length(); i++)
-    {
-        if( w[i] < 0 and bP[i] == 0)
-            return INT64_MAX;//a practical +Infinity
+int64_t min_P(const Mat<int64_t> &AP, const Vec<int64_t> &bP, const Vec<int64_t> &v);
 
-        if( bP[i] != 0)
-        {
-            tmp = ceil(static_cast<double>( -w[i] ) / bP[i] );
-            if( tmp > max )
-                max = tmp;
-        }
-    }
-    return max;
-}
 
 //returns the minimal k such that v \in k*int(P)
-inline int64_t min_intP(const Mat<int64_t> &AP, const Vec<int64_t> &bP, const Vec<int64_t> &v)
-{
-    //v \in k*int(P) iff AP*v + k*bP > 0;
-    int64_t i, j, max, tmp;
-    Vec<int64_t> w;
-    w.SetLength(bP.length(), 0);
-    // v[0] is just a dumb variable to potentially keep track the degree where v came from
-    assert_print(AP.NumCols() + 1, ==, v.length());
-    assert_print(AP.NumRows(), ==,  bP.length());
-    // w = Ap * v[1:]
-    for(i = 0; i < AP.NumRows(); i++)
-        for(j = 0; j < AP.NumCols(); j++)
-            w[i] += AP[i][j] * v[j + 1];
-    
-    max = -1;
-    for(i = 0; i < bP.length(); i++)
-    {
-        if( (w[i] < 1) and (bP[i] == 0) )
-            return INT64_MAX;//a practical +Infinity
-
-        if( bP[i] != 0)
-        {
-            tmp = ceil(static_cast<double>( -(w[i] - 1) ) / bP[i] );
-            if( tmp > max )
-                max = tmp;
-        }
-    }
-    return max;
-}
+int64_t min_intP(const Mat<int64_t> &AP, const Vec<int64_t> &bP, const Vec<int64_t> &v);
 
 
 // reverse dict
-template<class T, class Compare> void reverse_dict(map<T, int64_t, Compare> &dict, const Vec<T> &v)
+template<typename T, typename Compare> void reverse_dict(map<T, int64_t, Compare> &dict, const Vec<T> &v)
 {
     for(int64_t i = 0; i < v.length(); i++)
         dict[v[i]] = i;
@@ -323,7 +288,7 @@ template<class T, class Compare> void reverse_dict(map<T, int64_t, Compare> &dic
 
 
 // figure out what ring we are working over
-template<class R> void ring(int64_t &precision, ZZX &fE, ZZ &modulus, const int64_t &p);
+template<typename R> void ring(int64_t &precision, ZZX &fE, ZZ &modulus, const int64_t &p);
 
 template <> inline void ring<ZZ>(int64_t &precision, ZZX &fE, ZZ &modulus, const int64_t &p)
 {
@@ -372,8 +337,42 @@ template <> inline void ring<ZZ_pE>(int64_t &precision, ZZX &fE, ZZ &modulus, co
 
 }
 
+//lifts it to the respective representative class (ZZ or ZZX) and performs the DivRem operation 
+template<typename R> void divrem_lift(R &q, R&r, const R &a, const R&b);
 
+//lifts it to ZZ and performs the DivRem operation
+template<typename R> void divrem_lift_ZZ(R &q, R&r, const R &a, const R&b)
+{
+    ZZ qzz, rzz;
+    DivRem(qzz, rzz, conv<ZZ>(a), conv<ZZ>(b));
+    q = conv<R>(qzz);
+    r = conv<R>(rzz);
+}
+//lifts it to ZZ and performs the DivRem operation
+template<typename R> void divrem_lift_ZZX(R &q, R&r, const R &a, const R&b)
+{
+    ZZX qzzx, rzzx, azzx;
+    DivRem(qzzx, rzzx, conv<ZZX>(a), conv<ZZX>(b));
+    q = conv<R>(qzzx);
+    r = conv<R>(rzzx);
+}
 
+template<> inline void divrem_lift(zz_p &q, zz_p&r, const zz_p &a, const zz_p&b)
+{
+    divrem_lift_ZZ(q, r, a, b);
+}
+template<> inline void divrem_lift(ZZ_p &q, ZZ_p&r, const ZZ_p &a, const ZZ_p&b)
+{
+    divrem_lift_ZZ(q, r, a, b);
+}
+template<> inline void divrem_lift(zz_pE &q, zz_pE&r, const zz_pE &a, const zz_pE&b)
+{
+    divrem_lift_ZZX(q, r, a, b);
+}
+template<> inline void divrem_lift(ZZ_pE &q, ZZ_pE&r, const ZZ_pE &a, const ZZ_pE&b)
+{
+    divrem_lift_ZZX(q, r, a, b);
+}
 
 
 #endif
