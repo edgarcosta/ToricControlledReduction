@@ -64,7 +64,7 @@ static double timestamp_diff_in_seconds(timestamp_type start, timestamp_type end
   clock_gettime(CLOCK_PROCESS_CPUTIME_ID, t);
 }*/
 
-double get_cpu_time(){
+inline double get_cpu_time(){
     return (double)clock() / CLOCKS_PER_SEC;
 }
 
