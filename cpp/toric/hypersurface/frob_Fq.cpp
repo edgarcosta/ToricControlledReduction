@@ -62,3 +62,34 @@ void frob_Fq(Mat<ZZX> &F, Vec<int64_t> &hodge_numbers, Vec<int64_t>& r_vector, V
     if(verbose > 0)
         print(F);
 }
+
+
+
+/*
+ * same as above, but the input is given through string in the following format:
+ *      p
+ *      fE
+ *      f.keys()
+ *      f.values()
+ *      ffrob.keys()
+ *      ffrob.values()
+ *      AP
+ *      bP
+ */
+void frob_Fq(Mat<ZZX> &F, Vec<int64_t> &hodge_numbers, Vec<int64_t>& r_vector, Vec<int64_t> &charpoly_prec, const char* input, const bool &verbose)
+{
+    int64_t p;
+    ZZX fE;
+    map< Vec<int64_t>, ZZX, vi64less> f, ffrob;
+    Mat<int64_t> AP;
+    Vec<int64_t> bP;
+    stringstream buffer;
+    buffer << input;
+    buffer >> p;
+    buffer >> fE;
+    buffer >> f;
+    buffer >> ffrob;
+    buffer >> AP;
+    buffer >> bP;
+    frob_Fq(F, hodge_numbers, r_vector, charpoly_prec, p, fE, f, ffrob, AP, bP, verbose);
+}

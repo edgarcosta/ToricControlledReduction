@@ -56,3 +56,27 @@ void zeta_and_frob_Fp(Vec<ZZ> &zeta, Mat<ZZ> &F, Vec<int64_t> &hodge_numbers, Ve
 }
 
 
+/*
+ * same as above, but the input is given through string in the following format:
+ *      p
+ *      f.keys()
+ *      f.values()
+ *      AP
+ *      bP
+ */
+void zeta_and_frob_Fp(Vec<ZZ> &zeta, Mat<ZZ> &F, Vec<int64_t> &hodge_numbers, Vec<int64_t>& r_vector, const char* input, const bool &verbose)
+{
+    int64_t p;
+    map< Vec<int64_t>, ZZ, vi64less> f;
+    Mat<int64_t> AP;
+    Vec<int64_t> bP;
+    stringstream buffer;
+    buffer << input;
+    buffer >> p;
+    buffer >> f;
+    buffer >> AP;
+    buffer >> bP;
+    zeta_and_frob_Fp(zeta, F, hodge_numbers, r_vector, p, f, AP, bP, verbose);
+}
+
+
