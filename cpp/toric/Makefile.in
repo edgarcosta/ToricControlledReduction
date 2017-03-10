@@ -1,5 +1,5 @@
 #  Copyright (C)  2016-2017 Edgar Costa
-#  See the file COPYING for license details.
+#  See the file LICENSE for license details.
 
 MAKEFLAGS+=-j$(JOBS)
 
@@ -18,7 +18,7 @@ OBJS = $(patsubst %.cpp, build/%.o, $(SOURCES))
 
 
 EXAMPLE_SOURCES = $(wildcard examples/*.cpp)
-EXAMPLES = $(patsubst %.cpp, examples/%.exe, $(EXAMPLE_SOURCES))
+EXAMPLES = $(patsubst %.cpp, build/%.exe, $(EXAMPLE_SOURCES))
 
 TEST_SOURCES = $(wildcard test/*.cpp)
 TESTS = $(patsubst %.cpp, build/%.exe, $(TEST_SOURCES))
@@ -29,7 +29,7 @@ clean:
 	rm -rf build
 
 
-examples: $(EXMPS)
+examples: $(EXAMPLES)
 
 test: $(TESTS)
 
