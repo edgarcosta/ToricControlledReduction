@@ -17,10 +17,11 @@
 void relative_precision(Vec<int64_t> &r_vector, Vec<int64_t> &charpoly_prec, const Vec<int64_t> &hodge_numbers, const int64_t &weight, const int64_t &p, const int64_t &a)
 {
     r_vector.kill();
-    r_vector.SetLength( hodge_numbers.length(), 0);
+    r_vector.SetLength( hodge_numbers.length(), int64_t(0));
     Vec<int64_t> HP, slope;
     hodge_polygon(HP, slope, hodge_numbers);
-
+    charpoly_prec.kill();
+    charpoly_prec.SetLength(HP.length(),int64_t(0));
     int64_t Pdeg, max_digits, i, j;
     Pdeg = HP.length() - 1;
     max_digits = 0;
