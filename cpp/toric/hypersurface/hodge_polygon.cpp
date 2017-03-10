@@ -37,14 +37,18 @@
  *         ~
  *   -----
  *  h_{n-1} ~  h_{n-2} ~ h_{n-3}  ... h_0   # hodge numbers
- *     0          1         2       n -1    # slopes
+ *     0          1         2        n-1    # slopes
  *  0 ----------- i ----------------- N -->  where N = dim PH^(n-1) (X) 
  */
 void hodge_polygon(Vec<int64_t> &hodge_polygon, Vec<int64_t> &slope, Vec<int64_t> hodge_numbers)
 {
-    hodge_polygon.SetLength( sum(hodge_numbers) + 1);
-    slope.SetLength( sum(hodge_numbers) + 1);
+    int64_t dim_H = sum(hodge_numbers);
+    print(hodge_numbers);
+    print(dim_H);
+    hodge_polygon.SetLength( dim_H + 1, int64_t(0));
+    slope.SetLength( dim_H + 1, int64_t(0));
     reverse(hodge_numbers.begin(), hodge_numbers.end());
+    print(hodge_numbers);
 
     int64_t shift_vertical, shift_horizontal;
     int64_t i, k;
@@ -64,5 +68,5 @@ void hodge_polygon(Vec<int64_t> &hodge_polygon, Vec<int64_t> &slope, Vec<int64_t
         shift_horizontal += hodge_numbers[i];
         shift_vertical = hodge_polygon[shift_horizontal - 1];
     }
-    assert_print(s, ==, hodge_polygon[ shift_horizontal ]);
+    assert_print(s, ==, shift_vertical);
 }
