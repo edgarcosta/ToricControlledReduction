@@ -26,7 +26,7 @@ using namespace NTL;
  *  - hodge_numbers, the hodge numbers  [h_0, h_1,   ...,    h_n], the first h0 columns correspond to PH^(weight, 0)(X), the next h1 to PH^(weight-1, 1)(X), etc
  *  - r_vector, a column corresponding to basis element in PH^(weight - i, i)(X) is correct modulo p^(r_vector[i] + weight - i) 
  */
-void zeta_and_frob_Fp(Vec<ZZ> &zeta, Mat<ZZ> &F, Vec<int64_t> &hodge_numbers, Vec<int64_t>& r_vector, const int64_t &p, const map< Vec<int64_t>, ZZ, vi64less> &f, const Mat<int64_t> &AP, const Vec<int64_t> &bP, const bool &verbose = 1);
+void zeta_and_frob_Fp(Vec<ZZ> &zeta, Mat<ZZ> &F, Vec<int64_t> &hodge_numbers, Vec<int64_t>& r_vector, const int64_t &p, const map< Vec<int64_t>, ZZ, vi64less> &f, const Mat<int64_t> &AP, const Vec<int64_t> &bP, const int64_t &verbose = 1);
 /*
  * same as above, but the input is given through string in the following format:
  *      p
@@ -40,7 +40,14 @@ void zeta_and_frob_Fp(Vec<ZZ> &zeta, Mat<ZZ> &F, Vec<int64_t> &hodge_numbers, Ve
  *  represents:
  *  y**2 + y - (x ** 3 - x**2 - 7820*x - 263580) over GF(17) aka http://www.lmfdb.org/EllipticCurve/Q/11/a/1
  */
-void zeta_and_frob_Fp(Vec<ZZ> &zeta, Mat<ZZ> &F, Vec<int64_t> &hodge_numbers, Vec<int64_t>& r_vector, const char* input, const bool &verbose = 1);
+void zeta_and_frob_Fp(Vec<ZZ> &zeta, Mat<ZZ> &F, Vec<int64_t> &hodge_numbers, Vec<int64_t>& r_vector, const char* input, const int64_t &verbose = 1);
+
+/*
+ * Given an input in format above, computes the zeta function
+ * and checks if it maches the expected output
+ */
+bool test_Fp(const char *input, const char *output, bool verbose = 0);
+
 
 /*
  * Same goal as above, but now over Fq. However, we have not implemented the Frobenius action on Zq. Thus some of the works is left to you.
@@ -66,7 +73,7 @@ void zeta_and_frob_Fp(Vec<ZZ> &zeta, Mat<ZZ> &F, Vec<int64_t> &hodge_numbers, Ve
  *  Note:
  *   It's up to you to compute F F^\sigma .... F^(\sigma^(a - 1)) and then deduce the characteristic polynomial of Frob with charpoly_frob()
  */
-void frob_Fq(Mat<ZZX> &F, Vec<int64_t> &hodge_numbers, Vec<int64_t>& r_vector, Vec<int64_t> &charpoly_prec, const int64_t p, const ZZX &fE, map< Vec<int64_t>, ZZX, vi64less> &f, map< Vec<int64_t>, ZZX, vi64less> &ffrob, const Mat<int64_t> &AP, const Vec<int64_t> &bP, const bool &verbose = 1);
+void frob_Fq(Mat<ZZX> &F, Vec<int64_t> &hodge_numbers, Vec<int64_t>& r_vector, Vec<int64_t> &charpoly_prec, const int64_t p, const ZZX &fE, map< Vec<int64_t>, ZZX, vi64less> &f, map< Vec<int64_t>, ZZX, vi64less> &ffrob, const Mat<int64_t> &AP, const Vec<int64_t> &bP, const int64_t &verbose = 1);
 
 /*
  * same as above, but the input is given through string in the following format:
@@ -84,9 +91,13 @@ void frob_Fq(Mat<ZZX> &F, Vec<int64_t> &hodge_numbers, Vec<int64_t>& r_vector, V
  *  represents:
  *  y**2 + y - (x ** 3 - x**2 - 7820*x - 263580) over GF(17^2) aka http://www.lmfdb.org/EllipticCurve/Q/11/a/1
  */
-//TODO add examples
-void frob_Fq(Mat<ZZX> &F, Vec<int64_t> &hodge_numbers, Vec<int64_t>& r_vector, Vec<int64_t> &charpoly_prec, char* input, const bool &verbose = 1);
+void frob_Fq(Mat<ZZX> &F, Vec<int64_t> &hodge_numbers, Vec<int64_t>& r_vector, Vec<int64_t> &charpoly_prec, const char* input, const int64_t &verbose = 1);
 
+/*
+ * Given an input in format above, computes the Frob approximation
+ * and checks if it matches the expected output
+ */
+bool test_Fq(const char *input, const char *output, bool verbose = 0);
 
 
 /*

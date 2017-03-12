@@ -256,7 +256,7 @@ class dr{
         {
             init(p, f, f, AP, bP, verbose, minimal);
         }
-        virtual ~dr(){};
+        ~dr(){};
         void init(const int64_t &p, const map< Vec<int64_t>, R, vi64less> &f, const map< Vec<int64_t>, R, vi64less> &ffrob, const Mat<int64_t> &AP, const Vec<int64_t> &bP, const  int64_t &verbose = 0, const bool &minimal = false);
 
         // computes matrix of the map
@@ -446,6 +446,7 @@ void dr<R>::init(const int64_t &p, const map< Vec<int64_t>, R, vi64less> &f, con
         cout<<"n = " << this->n;
         cout<<" p = " << this->p;
         cout<<" precision = " << this->precision;
+        cout<<" verbose = " << this->verbose;
         cout<<endl;
         cout<<"AP = \n" << this->AP<<endl;
         cout<<"bP = " << this->bP<<endl;
@@ -563,8 +564,8 @@ void init_f_power_core(int64_t N, map< Vec<int64_t>, R, vi64less>  &F, Vec< map<
             }
             Fpow.append(Y);
         }
-        //replace Fpowers with Fpow (which wasn't reallocated
-        Fpowers.swap(Fpow);
+        //replace Fpowers with Fpow (which wasn't reallocated)
+        Fpowers = Fpow;
     }
     assert_print(Fpowers.length(), >=, N + 1);
 }
@@ -1365,6 +1366,7 @@ void dr<R>::reduce_vector_plain(Vec<R> &H, R &D, const Vec<int64_t> &u, const Ve
         cout << "dr::reduce_vector_plain(u = "<<u<<", v = "<<v<<") done" << endl;
 }
 
+//TODO fix this with  a lift
 template<typename R>
 void dr<R>::reduce_vector_finitediff(Vec<R> &H,  R &D, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t &k, const Vec<R> &G)
 {
@@ -1552,11 +1554,11 @@ void dr<R>::frob_matrix(Mat<R> &res, Vec<int64_t> N, bool method)
     Mat<R> F;
     int64_t i, m, shift;
     F.kill();
-    F.SetDims( dim_dr_Y, dim_dr_X );
+    F.SetDims( dim_dr_X, dim_dr_Y );
     shift = 0;
     for(m = 1; m < n + 1; m++)
     {
-        for(i = 0; i <= basis_dr_X[m].length(); i++)
+        for(i = 0; i < basis_dr_X[m].length(); i++)
         {
             if(verbose > 0)
                 cout<<"Computing Frob("<<basis_dr_X[m][i]<<") m = "<<m<<" N = "<<N[m-1]<<endl;
@@ -1577,11 +1579,20 @@ void dr<R>::frob_matrix(Mat<R> &res, Vec<int64_t> N, bool method)
 template<typename R>
 void dr<R>::frob_monomial(Vec<R> &F, const Vec<int64_t> &w, int64_t N, bool method)
 {
+    if(N == 0)
+    {
+        if(F.length() != dim_dr_Y)
+            F.SetLength(dim_dr_Y);
+        for(int64_t i = 0; i < dim_dr_Y; i++)
+            F[i] = R(0);
+        return;
+    }
+
     assert_print(p, !=, 0);
     if(verbose > 0)
         cout <<"dr<R>::frob_monomial("<<w<<", "<<N<<") "<<endl;
     
-    init_f_power(N - 1);
+    init_f_frob_power(N - 1);
     int64_t i, j, m, e, end;
     R fact = R(1);
     if(verbose > 0)
@@ -1606,23 +1617,23 @@ void dr<R>::frob_monomial(Vec<R> &F, const Vec<int64_t> &w, int64_t N, bool meth
             j = e - m;
             R Djm;
             Djm = conv<R>( binomial(m + j - 1, m - 1));
-            if (j%2 == 0)
+            if (j%2 != 0)
                 Djm = -Djm;
             Djm *= conv<R>( binomial(m + N - 1, N -j - 1) );
 
-            typename map< Vec<int64_t>, R, vi64less >::const_iterator fmit;
-            for(fmit = f_power[m].cbegin(); fmit != f_power[m].cend(); fmit++)
+            typename map< Vec<int64_t>, R, vi64less >::const_iterator fjit;
+            for(fjit = f_frob_power[j].cbegin(); fjit != f_frob_power[j].cend(); fjit++)
             {
-                Vec<int64_t> monomial = w + fmit->first;
+                Vec<int64_t> monomial = w + fjit->first;
                 Hit = H.find(monomial);
                 if( Hit == H.end() )
                 {
                     H[monomial].SetLength(dim_J, R(0));
                 }
-                //TODO missing frobenius!
-                H[monomial][0] += Djm * fact * fmit->second;
-            }   
+                H[monomial][0] += Djm * fact * fjit->second;
+            }
         }
+
         end = (e > 1) ? p : p - 1;
        
         for(i = 0; i < end; i++)
@@ -1634,7 +1645,7 @@ void dr<R>::frob_monomial(Vec<R> &F, const Vec<int64_t> &w, int64_t N, bool meth
         if( e > m)
             shift = w;
         else
-            shift.SetLength(n, int64_t(0));
+            shift.SetLength(n + 1, int64_t(0));
         
         for(Hit = H.cbegin();  Hit != H.end(); Hit++)
         {
@@ -1662,7 +1673,7 @@ void dr<R>::frob_monomial(Vec<R> &F, const Vec<int64_t> &w, int64_t N, bool meth
             if( e > 1)
             {
                 final_dest = u - v;
-                assert_print(final_dest, ==, p*dest);
+                assert_print(p*final_dest, ==, dest);
             }
             else
             {
@@ -1685,8 +1696,10 @@ void dr<R>::frob_monomial(Vec<R> &F, const Vec<int64_t> &w, int64_t N, bool meth
     //end of loop in e
 
 
-    F.kill();
-    F.SetLength(dim_dr_Y, R(0));
+    if(F.length() != dim_dr_Y)
+        F.SetLength(dim_dr_Y);
+    for(i = 0; i < dim_dr_Y; i++)
+            F[i] = R(0);
 
     assert_print(last_reduction_den, ==, 1);
 
@@ -1712,6 +1725,9 @@ void dr<R>::frob_monomial(Vec<R> &F, const Vec<int64_t> &w, int64_t N, bool meth
             F[i] = q;
         }
     }
+    if(verbose > 0)
+        cout <<"dr<R>::frob_monomial("<<w<<", "<<N<<") done!"<<endl;
+
 }
 
 

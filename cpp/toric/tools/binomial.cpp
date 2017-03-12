@@ -5,7 +5,8 @@
 
 ZZ binomial(int64_t n, int64_t k)
 {
-    assert(n>=k);
+    if( k == 0 or n == k)
+        return ZZ(1);
     ZZ num, den;
     int64_t i;
     num = 1; // n!/k! = (k+1) ... n

@@ -16,8 +16,9 @@ void N_vector(Vec<int64_t> &N, const Vec<int64_t> &r_vector, const int64_t &weig
     }
     else
     {
-        N.SetLength(r_vector.length());
+        N.SetLength(r_vector.length(), int64_t(0));
         for(int64_t i = 0; i < N.length(); i++)
-            N[i] = (weight + 1) + r_vector[i] - (i + 1);
+            if(r_vector[i] != 0)
+                N[i] = (weight + 1) + r_vector[i] - (i + 1);
     }
 }

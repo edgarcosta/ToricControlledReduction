@@ -1,6 +1,7 @@
 // Copyright 2017 Edgar Costa
 // See LICENSE file for license details.
 
+// tests if the hodge numbers match the expected hodge numbers for a sample of curves
 #include "dr.h"
 #include <iostream>
 #include <sstream>

@@ -4,7 +4,7 @@
 #include "dr.h"
 #include <iostream>
 #include <sstream>
-
+// runs test_all() on a sample of curves
 
 int main()
 {

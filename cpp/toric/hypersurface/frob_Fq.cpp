@@ -6,7 +6,7 @@
 //see hypersurface.h for more details
 
 
-void frob_Fq(Mat<ZZX> &F, Vec<int64_t> &hodge_numbers, Vec<int64_t>& r_vector, Vec<int64_t> &charpoly_prec, const int64_t p, const ZZX &fE, map< Vec<int64_t>, ZZX, vi64less> &f, map< Vec<int64_t>, ZZX, vi64less> &ffrob, const Mat<int64_t> &AP, const Vec<int64_t> &bP, const bool &verbose)
+void frob_Fq(Mat<ZZX> &F, Vec<int64_t> &hodge_numbers, Vec<int64_t>& r_vector, Vec<int64_t> &charpoly_prec, const int64_t p, const ZZX &fE, map< Vec<int64_t>, ZZX, vi64less> &f, map< Vec<int64_t>, ZZX, vi64less> &ffrob, const Mat<int64_t> &AP, const Vec<int64_t> &bP, const int64_t &verbose)
 {
     int64_t a, weight, precision;
     Vec<int64_t> N;
@@ -76,7 +76,7 @@ void frob_Fq(Mat<ZZX> &F, Vec<int64_t> &hodge_numbers, Vec<int64_t>& r_vector, V
  *      AP
  *      bP
  */
-void frob_Fq(Mat<ZZX> &F, Vec<int64_t> &hodge_numbers, Vec<int64_t>& r_vector, Vec<int64_t> &charpoly_prec, const char* input, const bool &verbose)
+void frob_Fq(Mat<ZZX> &F, Vec<int64_t> &hodge_numbers, Vec<int64_t>& r_vector, Vec<int64_t> &charpoly_prec, const char* input, const int64_t &verbose)
 {
     int64_t p;
     ZZX fE;

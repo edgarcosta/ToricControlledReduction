@@ -43,12 +43,9 @@
 void hodge_polygon(Vec<int64_t> &hodge_polygon, Vec<int64_t> &slope, Vec<int64_t> hodge_numbers)
 {
     int64_t dim_H = sum(hodge_numbers);
-    print(hodge_numbers);
-    print(dim_H);
     hodge_polygon.SetLength( dim_H + 1, int64_t(0));
     slope.SetLength( dim_H + 1, int64_t(0));
     reverse(hodge_numbers.begin(), hodge_numbers.end());
-    print(hodge_numbers);
 
     int64_t shift_vertical, shift_horizontal;
     int64_t i, k;
