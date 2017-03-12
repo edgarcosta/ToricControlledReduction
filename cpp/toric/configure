@@ -289,7 +289,7 @@ if [ $OS = "Linux" ]; then
 fi
 
 #defaults for CFLAGS
-FLAGS="-pedantic -Wall -O2 -funroll-loops"
+FLAGS="-pedantic -Wall -Wextra -O2 -funroll-loops"
 if [ "$GDB" = "1" ]; then
     FLAGS="${FLAGS} -g";
 fi
