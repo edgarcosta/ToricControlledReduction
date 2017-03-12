@@ -60,7 +60,6 @@ inline void conv(map< T, R, Compare> &x, const map< T, S, Compare> &y)
 
 using namespace NTL;
 
-//TODO add frobenius
 
 
 
@@ -162,6 +161,61 @@ T min(const Vec<T> &v)
             m = v[i];
     return m;
 }
+template<typename T>
+T operator*(const Vec<T> &v, const Vec<T> &w)
+{
+    T res;
+    res = T(0);
+    assert_print(v.length(), ==, w.length());
+    for(int64_t i = 0; i < v.length(); i++)
+        res += v[i] * w[i];
+    return res;
+}
+
+
+template<typename T>
+Vec<T> operator*(const Mat<T> &A, const Vec<T> &b)
+{
+    assert_print(b.length(), ==, A.NumCols());
+    Vec<T> v;
+    v.SetLength(b.length());
+    for(int64_t i = 0; i < b.length(); i++)
+        v[i] = A[i] * b;
+    return v;
+}
+
+template<typename T>
+Vec<T> operator-(const Vec<T> &v, const Vec<T> &w)
+{
+    assert_print(v.length(), ==, w.length());
+    Vec<T> res;
+    res.SetLength(v.length());
+    for(int64_t i = 0; i < v.length(); i++)
+        res[i] = v[i] - w[i];
+    return res;
+}
+
+template<typename T>
+Vec<T> operator-=(Vec<T> &v, const Vec<T> &w)
+{
+    assert_print(v.length(), ==, w.length());
+    for(int64_t i = 0; i < v.length(); i++)
+        v[i] -= w[i];    
+    return v;
+}
+
+template<typename T>
+Mat<T> operator-=(Mat<T> &A, const Mat<T> &B)
+{
+    assert_print(A.NumRows(), ==, B.NumRows());
+    assert_print(A.NumCols(), ==, B.NumCols());
+
+    for(int64_t i = 0; i < A.NumRows(); i++)
+        A[i] -= B[i];    
+    return A;
+}
+
+
 
 
 

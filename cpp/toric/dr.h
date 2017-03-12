@@ -7,6 +7,7 @@
 
 #include "linear_algebra.h"
 #include "tools.h"
+#include "finitediff.h"
 #include "timing.h"
 
 
@@ -36,7 +37,7 @@
 using namespace std;
 using namespace NTL;
 
-#define DEFAULT_METHOD 1
+#define DEFAULT_METHOD 2
 
 //R = ZZ, ZZ_p, zz_p. ZZ_pE, or zz_pe
 template<typename R>
@@ -314,13 +315,16 @@ class dr{
                 case 0:
                     reduce_vector_plain(H, D, u, v, k, G); break;
                 case 1:
-                    reduce_vector_finitediff(H, D, u, v, k, G); break;
+                    reduce_vector_finitediff_plain(H, D, u, v, k, G); break;
+                case 2:
+                    reduce_vector_finitediff_lift(H, D, u, v, k, G); break;
                 default:
                     reduce_vector(H, D, u, v, k, G); break;
             }
         }
         void reduce_vector_plain(Vec<R> &H, R &D, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t &k, const Vec<R> &G);
-        void reduce_vector_finitediff(Vec<R> &H, R &D, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t &k, const Vec<R> &G);
+        void reduce_vector_finitediff_plain(Vec<R> &H, R &D, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t &k, const Vec<R> &G);
+        void reduce_vector_finitediff_lift(Vec<R> &H, R &D, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t &k, const Vec<R> &G);
         //TODO
         void reduce_vector_BSGS(Vec<R> &H, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t &k, const Vec<R> &G);
 
@@ -1366,64 +1370,41 @@ void dr<R>::reduce_vector_plain(Vec<R> &H, R &D, const Vec<int64_t> &u, const Ve
         cout << "dr::reduce_vector_plain(u = "<<u<<", v = "<<v<<") done" << endl;
 }
 
-//TODO fix this with  a lift
 template<typename R>
-void dr<R>::reduce_vector_finitediff(Vec<R> &H,  R &D, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t &k, const Vec<R> &G)
+void dr<R>::reduce_vector_finitediff_plain(Vec<R> &H,  R &D, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t &k, const Vec<R> &G)
 {
     if( verbose > 2)
-        cout << "dr::reduce_vector_finitediff(u = "<<u<<", v = "<<v<<")" << endl;
+        cout << "dr::reduce_vector_finitediff_plain(u = "<<u<<", v = "<<v<<")" << endl;
     if(k <= n +1)
         reduce_vector_plain(H, D, u, v, k, G);
     else
     {
-        int64_t l, i, j;
         Vec< Mat<R> > M;
         R Mden;
         get_reduction_matrix(M, Mden, u, v);
-        H = G;
-        
-        // Mfd[l] = M(k - 1 - (self.n + 1) + l) 
-        // equivalently
-        // Mfd[n + 1 -l] = M(k - 1 - l)
-        // Mfd = [ sum( ( self.R(k - 1 - (self.n + 1) + l) ** i) * Mi for i, Mi in  enumerate(M) ) for l in range(self.n + 2) ];
-        Vec< Mat<R> > Mfd;
-        Mfd.SetLength(n + 2);
-        for(l = 0; l < n + 2; l++)
-        {
-            Mfd[l].SetDims(dim_J, dim_J);
-            for(i = 0; i < n + 2; i++)
-            {
-                R tmp;
-                power(tmp,  R(k - 1 - (n + 1) + l), i);
-                Mfd[l] += tmp * M[i];
-            }
-        }
-        for(l = 0; l < n + 2; l++)
-            //u v^{(k - 1 - l)  + 1} --> u v^{(k - 1 - l)}
-            // Mfd[n + 1 -l] = M(k - 1 - l)
-            H = Mfd[n + 1 - l] * H;
-
-        // make Mfd[l] = M[a, a - 1, ..., a - l]
-        // where a = k - 1 - (n + 1);
-        for(l = 1; l < n + 2; l++)
-            for(j = n + 1; j >= l; j--)
-                Mfd[j] -= Mfd[j - 1];
-
-        for(l = 0; l < (k - 1 - (n + 1)); l++)
-        {
-            // Mfd[0] =  M(k - 1 - (n + 1) - l)
-            // update Mfd vector
-            for(j = n; j >= 0; j--) // deg(M) = n + 1 ==> Mfd[n+1] is constant
-                Mfd[j] -= Mfd[j + 1];
-            // after
-            // Mfd[0] =  M(k - 1 - (n + 1) - l - 1)
-            H = Mfd[0] * H;
-        }
-        assert( Mfd[0] == M[0] );
+        finitediff_plain(H, k, G, M);
         D = power(Mden, k);
     }
     if( verbose > 2)
-        cout << "dr::reduce_vector_finitediff(u = "<<u<<", v = "<<v<<") done" << endl;
+        cout << "dr::reduce_vector_finitediff_plain(u = "<<u<<", v = "<<v<<") done" << endl;
+}
+template<typename R>
+void dr<R>::reduce_vector_finitediff_lift(Vec<R> &H,  R &D, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t &k, const Vec<R> &G)
+{
+    if( verbose > 2)
+        cout << "dr::reduce_vector_finitediff_lift(u = "<<u<<", v = "<<v<<")" << endl;
+    if(k <= n +1)
+        reduce_vector_plain(H, D, u, v, k, G);
+    else
+    {
+        Vec< Mat<R> > M;
+        R Mden;
+        get_reduction_matrix(M, Mden, u, v);
+        finitediff_lift(H, k, G, M);
+        D = power(Mden, k);
+    }
+    if( verbose > 2)
+        cout << "dr::reduce_vector_finitediff_lift(u = "<<u<<", v = "<<v<<") done" << endl;
 }
 
 

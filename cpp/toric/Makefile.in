@@ -3,7 +3,7 @@
 
 MAKEFLAGS+=-j$(JOBS)
 
-SOURCE_DIRS = dr hypersurface linear_algebra tools
+SOURCE_DIRS = dr finitediff hypersurface linear_algebra tools
 BUILD_DIRS = $(patsubst %, build/%, $(SOURCE_DIRS)) build/test build/examples
 AT=@
 define NEWLINE
