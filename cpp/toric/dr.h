@@ -37,7 +37,13 @@
 using namespace std;
 using namespace NTL;
 
+//see void reduce_vector(Vec<R> &H, R &D, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t &k, const Vec<R> &G, int64_t method = DEFAULT_METHOD)
+// method = 0, plain
+// method = 1, finite diff
+// method = 2, finite diff working over ZZ or ZZ[x] to avoid reductions 
+// method = 3, BSGS not implemented
 #define DEFAULT_METHOD 2
+
 
 //R = ZZ, ZZ_p, zz_p. ZZ_pE, or zz_pe
 template<typename R>
@@ -170,12 +176,13 @@ class dr{
         // cokernels_*_basis[i] = basis for *_i in P_i
         // constructed such that basis for I_i < basis for J_i
         // basis_dr_Y[i] = J_i or P_1 if i == 1
-        // basis_dr_X[i] = I_i or P^*_1 if i == 1 FIXME: P^*_1 = I_1
+        // basis_dr_X[i] = I_i (note P^*_1 = I_1)
         Vec< Vec< Vec<int64_t> > >cokernels_J_basis, cokernels_I_basis, basis_dr_Y, basis_dr_X;
         // reverse maps
         Vec< map< Vec<int64_t>, int64_t, vi64less> > cokernels_J_basis_dict, cokernels_I_basis_dict, basis_dr_Y_dict, basis_dr_X_dict;
         // \dim PH^{n-1} (Y) and \dim PH^{n-1} (X)
         int64_t dim_dr_Y, dim_dr_X;
+        int64_t max_pole; // highest i such that dim J_i != 0 , this happens to be n, unless H^(0,n-1) = 0
         Vec<int64_t> hodge_numbers;
 
 
@@ -290,7 +297,17 @@ class dr{
          * where w \in P_m, st (m, j) != 0
          */
         void get_reduction_matrix(Vec< Mat<R> > &M, R &Mden, const Vec<int64_t> &u, const Vec<int64_t> &w);
-
+        
+        /*
+         * same as above, but computes the matrix as polynomial in the u coordinates
+         * computes a matrix M with coefficients in U0, ..., UN
+         * such that M evaluated at the vector u, matches the matrix above
+         */
+        void compute_reduction_polymatrix( const Vec<int64_t> &w);
+        /*
+         * where the matrices computed above are stored
+         */
+        map< Vec<int64_t>, map< Vec<int64_t>, Mat<R>, vi64less>, vi64less> reduction_polymatrix_dict;
         
         /*
          * reduction
@@ -308,7 +325,7 @@ class dr{
          * = 
          * u \sum_i (m + i - 1)! bi omega / f^{m + i}
          */
-        void reduce_vector(Vec<R> &H, R &D, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t &k, const Vec<R> &G, int method = DEFAULT_METHOD)
+        void reduce_vector(Vec<R> &H, R &D, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t &k, const Vec<R> &G, int64_t method = DEFAULT_METHOD)
         {
             switch(method)
             {
@@ -337,9 +354,9 @@ class dr{
         // computes the approximation of Frob(w \omega / f^m) using N terms in the Frobenius expansion
         // Frob(w \omega / f^m) ~ Frob(w) \sum_{j = 0} ^{N - 1} D_{j, m} Frob(f^j) f^{-p(m + j)}
  
-        void frob_monomial(Vec<R> &res, const Vec<int64_t> &w, int64_t N, bool method = DEFAULT_METHOD);
+        void frob_monomial(Vec<R> &res, const Vec<int64_t> &w, int64_t N, int64_t method = DEFAULT_METHOD);
 
-        void frob_matrix(Mat<R> &res, Vec<int64_t> N, bool method = DEFAULT_METHOD);
+        void frob_matrix(Mat<R> &res, Vec<int64_t> N, int64_t method = DEFAULT_METHOD);
 
         
 
@@ -521,6 +538,19 @@ void dr<R>::init_tuples()
         reverse_dict(tuple_dict[i], tuple_list[i]);
         reverse_dict(tuple_int_dict[i], tuple_int_list[i]);
     }
+    if(verbose > 1)
+    {
+        Vec<int64_t> dimP, dimPint;
+        dimP.SetLength( n + 2 );
+        dimPint.SetLength( n + 2 );
+        for(i = 0; i < n + 2; i++)
+        {
+            dimP[i] = tuple_list[i].length();
+            dimPint[i] = tuple_int_list[i].length();
+        }
+        print(dimP);
+        print(dimPint);
+    }
     if(verbose > 2)
         cout<<"dr::init_tuples() end"<<endl;
 }
@@ -622,22 +652,31 @@ void dr<R>::init_solve_and_cokernels()
     cokernels_J_dimensions.SetLength(n + 2, int64_t(0));
     assert_print(coeff(P, n + 1), ==, 0);
     for(i = 0; i < n + 2; i++)
+    {
         cokernels_J_dimensions[i] = conv< long >( coeff(P, i) );
+        if(cokernels_J_dimensions[i] == 0)
+        {
+            this->max_pole = i - 1;
+            break;
+        }
+    }
+        
+
     dim_J = sum(cokernels_J_dimensions); 
 
     if( verbose > 1 )
         cout << "dim J_i = "<<cokernels_J_dimensions<<endl;
     
-    cokernels_J_basis.SetLength(n + 2);
-    cokernels_J_basis_dict.SetLength(n + 2);
+    cokernels_J_basis.SetLength(max_pole + 2);
+    cokernels_J_basis_dict.SetLength(max_pole + 2);
     //changing the length afterwards is troublesome, as maps are not "relocatable"
     cokernels_J_basis_dict.FixAtCurrentLength();
 
-    solve_matrix.SetLength(n + 2);
-    solve_denom.SetLength(n + 2);
-    for(i = n + 1; i >= 0; i--)
+    solve_matrix.SetLength(max_pole + 2);
+    solve_denom.SetLength(max_pole + 2);
+    for(i =0; i <= max_pole + 1; i++)
     {
-        if(i == n + 1 and verbose > 1)
+        if(i == max_pole + 1 and verbose > 1)
             cout << "Asserting that the hypersurface is non degenerate" << endl;
 
         Mat<R> J;
@@ -646,7 +685,7 @@ void dr<R>::init_solve_and_cokernels()
             printf("Solving Jacobian relations at degree %ld (%ld x %ld)\n", (long)i, (long)J.NumRows(), (long)J.NumCols());
 
         Vec<int64_t> B, initB;
-        if( i <= n )
+        if( i <= max_pole )
         {
             initB.SetLength(cokernels_I_dimensions[i]);
             for(j = 0; j < cokernels_I_dimensions[i]; j++)
@@ -660,9 +699,8 @@ void dr<R>::init_solve_and_cokernels()
         solve_system(B, solve_matrix[i], solve_denom[i], J, initB);
         if(B.length() != cokernels_J_dimensions[i])
         {
-            if(i == n + 1)
-                cout<<"The hypersurface is not nondegenerate"<<endl;
-            printf("Expected B.length() = %ld, got %ld", (long) cokernels_J_dimensions[i], (long) B.length());
+            cout<<"Something went wrong, perhaps the hypersurface is not nondegenerate..."<<endl;
+            printf("At degree %ld expected B.length() = %ld, got %ld", (long) i,  (long) cokernels_J_dimensions[i], (long) B.length());
             assert(false);
         }
         if( i > 0 )
@@ -676,15 +714,15 @@ void dr<R>::init_solve_and_cokernels()
 
         reverse_dict(cokernels_J_basis_dict[i], cokernels_J_basis[i]);
     }
-
-    // PH^{n-1} (Y) = P_1 + J_2 + ... + J_n
-    // PH^{n-1} (X) = P^*_1 + I_2 + ... + I_n 
-    basis_dr_Y.SetLength(n+1);
-    basis_dr_Y_dict.SetLength(n+1);
+    
+    // PH^{n-1} (Y) = P_1 + J_2 + ... + J_{max_pole}, generally max_pole = n
+    // PH^{n-1} (X) = P^*_1 + I_2 + ... + I_{max_pole}
+    basis_dr_Y.SetLength(max_pole + 1);
+    basis_dr_Y_dict.SetLength(max_pole + 1);
     
 
-    basis_dr_X.SetLength(n+1);
-    basis_dr_X_dict.SetLength(n+1);
+    basis_dr_X.SetLength(max_pole + 1);
+    basis_dr_X_dict.SetLength(max_pole + 1);
 
     //changing the length afterwards is troublesome, as maps are not "relocatable"
     basis_dr_Y_dict.FixAtCurrentLength();
@@ -702,7 +740,7 @@ void dr<R>::init_solve_and_cokernels()
     dim_dr_X =  tuple_int_list[1].length();
     
     
-    for(i = 2; i < n + 1; i++)
+    for(i = 2; i < max_pole + 1; i++)
     {
         basis_dr_Y[i] = cokernels_J_basis[i];
         reverse_dict(basis_dr_Y_dict[i], basis_dr_Y[i]);
@@ -728,15 +766,32 @@ void dr<R>::init_cokernels_I_basis()
     cokernels_I_basis_dict.SetLength(n + 1);
     //changing the length afterwards is troublesome, as maps are not "relocatable"
     cokernels_I_basis_dict.FixAtCurrentLength();
-    hodge_numbers.SetLength(n);
+    hodge_numbers.SetLength(n, int64_t(0));
     hodge_numbers[0] = tuple_int_list[1].length();
-
-    for(int64_t d = 1; d < n + 1; d++)
+    int64_t max_hi = n;
+    for(int64_t d = 1; d < max_hi + 1; d++)
     {
         init_cokernels_I_basis(d);
         reverse_dict(cokernels_I_basis_dict[d], cokernels_I_basis[d]);
         cokernels_I_dimensions[d] = cokernels_I_basis[d].length();
         hodge_numbers[d - 1] = cokernels_I_basis[d].length();
+        if( hodge_numbers[d - 1] == 0 and 2*d <  n + 1 )
+        {
+            // hodge symmetry implies H^(w -d, d) = H^(d, w-d) = 0
+            max_hi--;
+            hodge_numbers[n - 1 - (d - 1)] = 0;
+            cokernels_I_basis[n - d + 1].SetLength(0);
+        }
+        if( 2*d >  n + 1) // d - 1 > (n - 1)- ( d - 1)
+        {
+            if(hodge_numbers[d - 1] != hodge_numbers[(n - 1) - (d -1)] )
+            {
+                cout<<"Something went wrong, perhaps the hypersurface is not nondegenerate..."<<endl;
+                print(d);
+                print(n - 1 - (d-1));
+                assert_print(hodge_numbers[d - 1], ==, hodge_numbers[(n - 1) - (d -1)]);
+            }
+        }
     }
     dim_I = sum(cokernels_I_dimensions);
     if(verbose > 1)
@@ -755,26 +810,31 @@ void dr<R>::init_cokernels_I_basis(int64_t d)
 {
     if(verbose > 2)
         cout<<"dr::init_cokernels_I_basis("<<d<<")"<<endl;
+    if(d == 1)
+    {
+        cokernels_I_basis[d] = tuple_int_list[d];
+    }
+    else
+    {
+        //I_d = (S^* + J(f) / J(f))_d
+        Mat<R> J;
+        Vec<int64_t> nonpivots;
+        int64_t i, dim_Sintd;
+        matrix_J(J, d);
+        dim_Sintd = tuple_int_list[d].length();
 
-    //I_d = (S^* + J(f) / J(f))_d
-    Mat<R> J;
-    Vec<int64_t> nonpivots;
-    int64_t i, dim_Sintd;
-    matrix_J(J, d);
-    dim_Sintd = tuple_int_list[d].length();
+        //Matrinx representing S^*_d in S_d
+        Mat<R> T;
+        T.SetDims(J.NumRows(), dim_Sintd);
+        for(i = 0; i < dim_Sintd; i++)
+            T[tuple_dict[d][tuple_int_list[d][i]]][i] = 1;
 
-    //Matrinx representing S^*_d in S_d
-    Mat<R> T;
-    T.SetDims(J.NumRows(), dim_Sintd);
-    for(i = 0; i < dim_Sintd; i++)
-        T[tuple_dict[d][tuple_int_list[d][i]]][i] = 1;
-
-    //computes the cokernel of the map (img(J) \cap S^* )_d -> S^*_d
-    cokernel_intersection(nonpivots, T, J);
-    cokernels_I_basis[d].SetLength(nonpivots.length());
-    for(i = 0; i < nonpivots.length(); i++)
-        cokernels_I_basis[d][i] = tuple_int_list[d][nonpivots[i]];
-
+        //computes the cokernel of the map (img(J) \cap S^* )_d -> S^*_d
+        cokernel_intersection(nonpivots, T, J);
+        cokernels_I_basis[d].SetLength(nonpivots.length());
+        for(i = 0; i < nonpivots.length(); i++)
+            cokernels_I_basis[d][i] = tuple_int_list[d][nonpivots[i]];
+    }
     if(verbose > 2)
         cout<<"dr::init_cokernels_I_basis("<<d<<") done"<<endl;
 }
@@ -871,22 +931,22 @@ void dr<R>::init_rho_and_pi_matrices()
 
 
     int64_t i, j, k, d;
-    rho.SetLength(n + 2);
-    rho_den.SetLength(n + 2);
-    pi.SetLength(n + 2);
-    pi_den.SetLength(n + 2);
+    rho.SetLength(max_pole + 2);
+    rho_den.SetLength(max_pole + 2);
+    pi.SetLength(max_pole + 2);
+    pi_den.SetLength(max_pole + 2);
 
     //deal with d = 0
     // rho[0] = 0 map, the codomain doesn't exist...
     // pi[0] is the identity on {0}
-    rho.SetLength(n+2);
+    rho[0].SetLength(0);
     rho_den[0] = 1;
     pi[0].SetDims(1, 1);
     pi[0][0][0] = 1;
     pi_den[0] = 1;
     
 
-    for(d = 1; d < n + 2; d++)
+    for(d = 1; d < max_pole + 2; d++)
     {
         Vec<Mat<R>> &RHO = rho[d];
         RHO.SetLength(n + 2);
@@ -982,7 +1042,7 @@ void dr<R>::init_inclusion_matrices()
     int64_t total_columns, total_rows;
     total_columns = 0;
     total_rows = 0;
-    for(int64_t k = 0; k < n + 1; k++)
+    for(int64_t k = 0; k < max_pole + 1; k++)
     {
         shift_columns[k] = total_columns;
         shift_rows[k] = total_rows;
@@ -996,7 +1056,7 @@ void dr<R>::init_inclusion_matrices()
         M.SetDims(total_rows, total_columns);
 
         Vec<int64_t> &u = tuple_list[1][i];
-        for(int64_t k = 0; k < n + 1; k++)
+        for(int64_t k = 0; k < max_pole + 1; k++)
         {
             
             for(int64_t j=0; j < cokernels_J_dimensions[k]; j++)
@@ -1022,9 +1082,9 @@ void dr<R>::test_inclusion_matrices()
 
     int64_t i, j, k;
     Vec< Vec<int64_t> > B, BJ;
-    for(i = 1; i < n + 2; i++)
+    for(i = 1; i < max_pole + 2; i++)
         B.append(tuple_list[i]);
-    for(i = 0; i < n + 1; i++)
+    for(i = 0; i < max_pole + 1; i++)
         BJ.append(cokernels_J_basis[i]);
 
 
@@ -1075,18 +1135,18 @@ void dr<R>::init_last_reduction()
     int64_t total_columns, total_rows;
     total_columns = 0;
     total_rows = 0;
-    for(k = 1; k < n + 2; k++)
+    for(k = 1; k < max_pole + 2; k++)
     {
         shift_columns[k] = total_columns;
         shift_rows[k] = total_rows;
         total_columns += tuple_list[k].length();
-        if(k < n + 1)
+        if(k < max_pole + 1)
             total_rows += basis_dr_Y[k].length();
     }
     M.SetDims(total_rows, total_columns);
 
     D = 1;
-    for(k = 2; k < n + 2; k++)
+    for(k = 2; k < max_pole + 2; k++)
         D *= pi_den[k];
     
     //P_1 --> P_1 is the identity map
@@ -1095,7 +1155,7 @@ void dr<R>::init_last_reduction()
     
 
     int64_t factorial = 1;
-    for(k = 2; k < n + 2; k++)
+    for(k = 2; k < max_pole + 2; k++)
     {
 
         // P_k ---> P_1 + J_2 + ... + J_k
@@ -1159,7 +1219,7 @@ void dr<R>::test_last_reduction()
         Vec<R> expected;
         expected.SetLength(B.length(), R(0));
         expected[i] = last_reduction_den;
-        for(k = 0; k < n + 2 - v[0]; k++)
+        for(k = 0; k < max_pole + 2 - v[0]; k++)
         {
             Vec<R> G;
             G.SetLength(last_reduction.NumCols(), R(0));
@@ -1203,7 +1263,7 @@ void dr<R>::init_proj()
     int64_t i, j, shiftX, shiftY;
     shiftX = 0;
     shiftY = 0;
-    for(i = 1; i < n + 1; i++)
+    for(i = 1; i < max_pole + 1; i++)
     {
         for(j = 0; j < basis_dr_Y[i].length(); j++)
         {
@@ -1238,16 +1298,16 @@ void dr<R>::get_reduction_matrix(Vec< Mat<R> > &M, R &Mden, const Vec<int64_t> &
 
     // M = M[0] + M[1] * T + ... + M[n] * T^(n + 1)
     M.kill();
-    M.SetLength(n + 2);
-    for(i = 0; i < n + 2; i++)
+    M.SetLength(max_pole + 2);
+    for(i = 0; i < max_pole + 2; i++)
         M[i].SetDims(dim_J, dim_J);
 
     // rho_{k, u + T*v} = RHO0[k] + T*RHO1[k] 1 <= k <= n + 1
     Vec< Mat<R> > RHO0, RHO1;;
-    RHO0.SetLength(n + 2);
-    RHO1.SetLength(n + 2);
+    RHO0.SetLength(max_pole + 2);
+    RHO1.SetLength(max_pole + 2);
     Mden = R(1);
-    for(k = 1; k < n + 2; k++)
+    for(k = 1; k < max_pole + 2; k++)
     {
         RHO0[k] = rho[k][0];
         RHO1[k].SetDims(rho[k][0].NumRows(), rho[k][0].NumCols());
@@ -1259,8 +1319,8 @@ void dr<R>::get_reduction_matrix(Vec< Mat<R> > &M, R &Mden, const Vec<int64_t> &
         Mden *= rho_den[k];
     }
     Vec<int64_t> shift; //shift[k] = sum(map(len, cokernels_J_basis[:k]))
-    shift.SetLength(n + 1, int64_t(0));
-    for(k = 1; k < n + 1; k++)
+    shift.SetLength(max_pole + 1, int64_t(0));
+    for(k = 1; k < max_pole + 1; k++)
     {
         shift[k] = shift[k-1] + cokernels_J_basis[k-1].length();
     }
@@ -1273,7 +1333,7 @@ void dr<R>::get_reduction_matrix(Vec< Mat<R> > &M, R &Mden, const Vec<int64_t> &
      * c_i = pi_{i} (h_i)  \in J_i  with i <= k
      * h_i = rho_{i + 1) u + Y*v} (h_{i + 1}) \in P_i with i <= k
      */
-    for(k = 0; k < n + 1; k++)
+    for(k = 0; k < max_pole + 1; k++)
     {
         for(z = 0; z < cokernels_J_dimensions[k]; z++)
         {
@@ -1332,6 +1392,61 @@ void dr<R>::get_reduction_matrix(Vec< Mat<R> > &M, R &Mden, const Vec<int64_t> &
 
     if( verbose > 2)
         cout << "dr::get_reduction_matrix(u = "<<u<<", v = "<<v<<") done" << endl;
+}
+
+
+template<typename R>
+void dr<R>::compute_reduction_polymatrix(const Vec<int64_t> &v)
+{
+    // do we really need to compute it?
+    typename map< Vec<int64_t>, map< Vec<int64_t>, Mat<R>, vi64less> , vi64less>::const_iterator it;
+    it = reduction_polymatrix_dict.find(v);
+    if( it != reduction_polymatrix_dict.end())
+        return;
+
+    if( verbose > 1)
+        cout << "dr::compute_reduction_polymatrix(v = "<<v<<")\n";
+
+    //asserts \deg v == 1
+    assert_print(v[0], ==, 1);
+    
+    
+    map< Vec<int64_t>, map< Vec<int64_t>, Mat<R>, vi64less>, vi64less> M = reduction_polymatrix_dict[v];
+    
+    
+    int64_t i, j, k, l , z;
+    
+    Vec<int64_t> shift; //shift[k] = sum(map(len, cokernels_J_basis[:k]))
+    shift.SetLength(max_pole + 1, int64_t(0));
+    for(k = 1; k < max_pole + 1; k++)
+    {
+        shift[k] = shift[k-1] + cokernels_J_basis[k-1].length();
+    }
+
+    Vec<int64_t> zero;
+    zero.SetLength(n, 0);
+
+    /*
+     * let alpha be a basis element in J_k
+     * M(alpha) = (c_0, c_1, c_2, ..., c_k, 0, ...)
+     * where
+     * h_{k + 1} = alpha + v \in P_{k + 1}
+     * c_i = pi_{i} (h_i)  \in J_i  with i <= k
+     * h_i = rho_{i + 1) u + Y*v} (h_{i + 1}) \in P_i with i <= k
+     */
+    for(k = 0; k < max_pole + 1; k++)
+    {
+        for(z = 0; z < cokernels_J_dimensions[k]; z++)
+        {
+            Vec<int64_t> &b = cokernels_J_basis[k][z];
+            int64_t b_coordinate = shift[k] + z; // as an element in cokernels_J_basis
+
+            // hi \in Vec(R[W0, ..., WN]) is represented as a dictionary
+            map< Vec<int64_t>, map< Vec<int64_t>, Vec<R>, vi64less>, vi64less> hi;
+            hi[zero].SetLength(tuple_list[k+1].length() );
+            //HERE
+        }
+    }
 }
 
 template<typename R>
@@ -1527,17 +1642,17 @@ void dr<R>::test_monomial_to_basis(int64_t N, bool random)
 
 
 template<typename R>
-void dr<R>::frob_matrix(Mat<R> &res, Vec<int64_t> N, bool method)
+void dr<R>::frob_matrix(Mat<R> &res, Vec<int64_t> N, int64_t method)
 {
     if(verbose > 0)
         cout <<"dr<R>::frob_matrix("<<N<<") "<<endl;
-    assert_print( n, ==, N.length() );
+    assert_print( max_pole, <=, N.length() );
     Mat<R> F;
     int64_t i, m, shift;
     F.kill();
     F.SetDims( dim_dr_X, dim_dr_Y );
     shift = 0;
-    for(m = 1; m < n + 1; m++)
+    for(m = 1; m < max_pole + 1; m++)
     {
         for(i = 0; i < basis_dr_X[m].length(); i++)
         {
@@ -1558,26 +1673,32 @@ void dr<R>::frob_matrix(Mat<R> &res, Vec<int64_t> N, bool method)
 }
 
 template<typename R>
-void dr<R>::frob_monomial(Vec<R> &F, const Vec<int64_t> &w, int64_t N, bool method)
+void dr<R>::frob_monomial(Vec<R> &F, const Vec<int64_t> &w, int64_t N, int64_t method)
 {
+    if(verbose > 0)
+        cout <<"dr<R>::frob_monomial("<<w<<", "<<N<<") "<<endl;
     if(N == 0)
     {
         if(F.length() != dim_dr_Y)
             F.SetLength(dim_dr_Y);
         for(int64_t i = 0; i < dim_dr_Y; i++)
             F[i] = R(0);
+        if(verbose > 0)
+            cout <<"dr<R>::frob_monomial("<<w<<", "<<N<<") done!"<<endl;
         return;
     }
+    timestamp_type wtime1, wtime2;
+    double wall_time, user_time;
+    user_time = get_cpu_time();
+    get_timestamp(&wtime1);
+
 
     assert_print(p, !=, 0);
-    if(verbose > 0)
-        cout <<"dr<R>::frob_monomial("<<w<<", "<<N<<") "<<endl;
+    
     
     init_f_frob_power(N - 1);
     int64_t i, j, m, e, end;
     R fact = R(1);
-    if(verbose > 0)
-        cout <<"dr<R>::frob_monomial("<<w<<", "<<N<<") done!"<<endl;
 
     map< Vec<int64_t>, Vec<R>, vi64less> H;
     typename map< Vec<int64_t>, Vec<R>, vi64less>::const_iterator Hit;
@@ -1706,8 +1827,15 @@ void dr<R>::frob_monomial(Vec<R> &F, const Vec<int64_t> &w, int64_t N, bool meth
             F[i] = q;
         }
     }
+    get_timestamp(&wtime2);
+    wall_time = timestamp_diff_in_seconds(wtime1,wtime2);
+    user_time = get_cpu_time() - user_time;
+
     if(verbose > 0)
+    {
         cout <<"dr<R>::frob_monomial("<<w<<", "<<N<<") done!"<<endl;
+        printf("Time: CPU %.2f s, Wall: %.2f s\n", user_time, wall_time );
+    }
 
 }
 
