@@ -32,7 +32,7 @@ void charpoly_frob(Vec<ZZ> &cp, const Mat<ZZ> &frob_matrix, const Vec<int64_t> &
         sign = 1;
     else
     {
-        for(i = 1; i < halfdegree; i++)
+        for(i = 0; i < degree + 1; i++)
         {
             ZZ p_power = power_ZZ(p, min(charpoly_prec[i], charpoly_prec[degree - i] + a * (degree - 2 * i)) * (weight /2) );
             if( cp[i] % p_power !=0 && cp[degree-i] % p_power != 0)
