@@ -23,14 +23,15 @@ void zeta_and_frob_Fp(Vec<ZZ> &zeta, Mat<ZZ> &F, Vec<int64_t> &hodge_numbers, Ve
     relative_precision(r_vector, charpoly_prec, hodge_numbers, weight, p, a); 
     //deduce N_vector
     N_vector(N, r_vector, weight, p);
+    precision = working_precision(N, r_vector, p);
     if(verbose > 0)
     {
         print(hodge_numbers);
         print(r_vector);
         print(N);
         print(charpoly_prec);
+        print(precision);
     }
-    precision = working_precision(N, r_vector, p);
 
     ZZ mod = power_ZZ(p, precision);
 
