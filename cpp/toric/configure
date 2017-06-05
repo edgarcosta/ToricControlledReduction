@@ -43,23 +43,23 @@ usage()
     echo "     --enable-gdb or --disable-gdb" 
     echo "   where <args> may be:"
 
-    if [ -z ${PREFIX+word} ]; then
+    if [ ! -z ${PREFIX+word} ]; then
         echo "     --prefix=<path>      Specify path to installation location (default: $PREFIX"
     fi
     
-    if [ -z ${GMP_DIR+word} ]; then
+    if [ ! -z ${GMP_DIR+word} ]; then
         echo "     --with-gmp=<path>    Specify location of GMP (default: $GMP_DIR)"
     fi
     
-    if [ -z ${MPFR_DIR+word} ]; then
+    if [ ! -z ${MPFR_DIR+word} ]; then
         echo "     --with-mpfr=<path>   Specify location of MPFR (default: $MPFR_DIR)"
     fi
     
-    if [ -z ${MPIR_DIR+word} ]; then
+    if [ ! -z ${MPIR_DIR+word} ]; then
         echo "     --with-mpir=<path>   Specify location of MPIR (default: $MPIR_DIR)"
     fi
 
-    if [ -z ${NTL_DIR+word} ]; then
+    if [ ! -z ${NTL_DIR+word} ]; then
         echo "     --with-ntl=<path>    Specify location of NTL (default: $NTL_DIR)"
     fi;
     
@@ -261,7 +261,7 @@ fi;
 
 INCS="-I\$(CURDIR)"
 for INC_DIR in ${INC_DIRS}; do
-   INCS="${INCS} -I${INC_DIR}"
+   INCS="${INCS} -isystem${INC_DIR}"
 done
 
 # library paths
@@ -285,7 +285,7 @@ ARCH=`uname -m`
 OS=`uname -s`
 
 if [ $OS = "Linux" ]; then
-    LIBS="${LIBS} lrt"
+    LIBS="${LIBS} -lrt"
 fi
 
 #defaults for CFLAGS
