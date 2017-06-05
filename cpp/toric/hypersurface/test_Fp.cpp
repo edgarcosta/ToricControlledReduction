@@ -3,7 +3,7 @@
 
 #include "hypersurface.h"
 
-bool test_Fp(const char *input, const char *output, bool verbose)
+bool test_Fp(const char *input, const char *output, int64_t verbose)
 {
     stringstream buffer;
     
