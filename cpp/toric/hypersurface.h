@@ -46,7 +46,7 @@ void zeta_and_frob_Fp(Vec<ZZ> &zeta, Mat<ZZ> &F, Vec<int64_t> &hodge_numbers, Ve
  * Given an input in format above, computes the zeta function
  * and checks if it maches the expected output
  */
-bool test_Fp(const char *input, const char *output, bool verbose = 0);
+bool test_Fp(const char *input, const char *output, int64_t verbose = 0);
 
 
 /*
