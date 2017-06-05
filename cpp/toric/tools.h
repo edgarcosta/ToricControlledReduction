@@ -161,15 +161,37 @@ T min(const Vec<T> &v)
             m = v[i];
     return m;
 }
+
+
+template<typename T>
+void mul(T &res, const Vec<T> &v, const Vec<T> &w)
+{
+    assert_print(v.length(), ==, w.length());
+    res = T(0);
+    T tmp;
+    for(int64_t i = 0; i < v.length(); i++)
+    {
+        mul(tmp, v[i], w[i]);
+        add(res, res, tmp);
+    }
+}
 template<typename T>
 T operator*(const Vec<T> &v, const Vec<T> &w)
 {
     T res;
-    res = T(0);
-    assert_print(v.length(), ==, w.length());
-    for(int64_t i = 0; i < v.length(); i++)
-        res += v[i] * w[i];
+    mul(res, v, w);
     return res;
+}
+
+template<typename T>
+void mul(Vec<T> &v, const Mat<T> &A, const Vec<T> &b)
+{
+    assert_print(b.length(), ==, A.NumCols());
+    Vec<T> tmp;
+    tmp.SetLength(b.length());
+    for(int64_t i = 0; i < b.length(); i++)
+        mul(tmp[i], A[i], b);
+    swap(tmp, v);
 }
 
 
@@ -178,40 +200,71 @@ Vec<T> operator*(const Mat<T> &A, const Vec<T> &b)
 {
     assert_print(b.length(), ==, A.NumCols());
     Vec<T> v;
-    v.SetLength(b.length());
-    for(int64_t i = 0; i < b.length(); i++)
-        v[i] = A[i] * b;
+    mul(v, A, b); 
     return v;
+}
+
+template<typename T>
+void add(Vec<T> &res, const Vec<T> &v, const Vec<T> &w)
+{
+    assert_print(v.length(), ==, w.length());
+    res.SetLength(v.length());
+    for(int64_t i = 0; i < v.length(); i++)
+        add(res[i], v[i], w[i]);
+}
+
+template<typename T>
+Vec<T> operator+(const Vec<T> &v, const Vec<T> &w)
+{
+    Vec<T> res;
+    add(res, v, w);
+    return res;
+}
+
+template<typename T>
+Vec<T> operator+=(Vec<T> &v, const Vec<T> &w)
+{
+    add(v, v, w);
+    return v;
+}
+
+template<typename T>
+void sub(Vec<T> &res, const Vec<T> &v, const Vec<T> &w)
+{
+    assert_print(v.length(), ==, w.length());
+    res.SetLength(v.length());
+    for(int64_t i = 0; i < v.length(); i++)
+        sub(res[i], v[i], w[i]);
 }
 
 template<typename T>
 Vec<T> operator-(const Vec<T> &v, const Vec<T> &w)
 {
-    assert_print(v.length(), ==, w.length());
     Vec<T> res;
-    res.SetLength(v.length());
-    for(int64_t i = 0; i < v.length(); i++)
-        res[i] = v[i] - w[i];
+    sub(res, v, w);
     return res;
 }
 
 template<typename T>
 Vec<T> operator-=(Vec<T> &v, const Vec<T> &w)
 {
-    assert_print(v.length(), ==, w.length());
-    for(int64_t i = 0; i < v.length(); i++)
-        v[i] -= w[i];    
+    sub(v, v, w);
     return v;
 }
 
 template<typename T>
-Mat<T> operator-=(Mat<T> &A, const Mat<T> &B)
+void sub(Mat<T> &res, const Mat<T> &A, const Mat<T> &B)
 {
     assert_print(A.NumRows(), ==, B.NumRows());
     assert_print(A.NumCols(), ==, B.NumCols());
-
+    res.SetDims(res.NumRows(), res.NumCols());
     for(int64_t i = 0; i < A.NumRows(); i++)
-        A[i] -= B[i];    
+        sub(res[i], A[i], B[i]);
+}
+template<typename T>
+Mat<T> operator-=(Mat<T> &A, const Mat<T> &B)
+{
+    sub(A, A, B);   
     return A;
 }
 
