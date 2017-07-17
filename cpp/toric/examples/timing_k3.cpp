@@ -15,6 +15,8 @@ int main()
     ps.SetLength(2);
     ps[0] = 1009;
     ps[1] = 10007;
+    ps[0] = 109;
+    ps[1] = 1009;
     N.SetLength(3, 3);
     N[2] = 2;
 
