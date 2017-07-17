@@ -46,7 +46,7 @@ void zeta_and_frob_Fp(Vec<ZZ> &zeta, Mat<ZZ> &F, Vec<int64_t> &hodge_numbers, Ve
  * Given an input in format above, computes the zeta function
  * and checks if it maches the expected output
  */
-bool test_Fp(const char *input, const char *output, int64_t verbose = 0);
+bool test_Fp(const char *input, const char *output, const int64_t &verbose = 0);
 
 
 /*
@@ -97,7 +97,7 @@ void frob_Fq(Mat<ZZX> &F, Vec<int64_t> &hodge_numbers, Vec<int64_t>& r_vector, V
  * Given an input in format above, computes the Frob approximation
  * and checks if it matches the expected output
  */
-bool test_Fq(const char *input, const char *output, bool verbose = 0);
+bool test_Fq(const char *input, const char *output, const int64_t &verbose = 0);
 
 
 /*
@@ -181,5 +181,8 @@ int64_t working_precision(const Vec<int64_t> &N, const Vec<int64_t> &r_vector, c
  *
  */
 void charpoly_frob(Vec<ZZ> &cp, const Mat<ZZ> &frob_matrix, const Vec<int64_t> &charpoly_prec, const int64_t &weight, const int64_t &p, const int64_t &a);
+
+#define buffer_length 2048
+bool run_examples(char examples[][3][buffer_length], const int64_t &examples_length, const int64_t &verbose = 0);
 
 #endif
