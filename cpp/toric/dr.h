@@ -37,12 +37,20 @@
 using namespace std;
 using namespace NTL;
 
-//see void reduce_vector(Vec<R> &H, R &D, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t &k, const Vec<R> &G, int64_t method = DEFAULT_METHOD)
+//see void reduce_vector(Vec<R> &H, R &D, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t &k, const Vec<R> &G, int64_t method = DEFAULT_VECTOR_REDUCTION_METHOD)
 // method = 0, plain
 // method = 1, finite diff
 // method = 2, finite diff working over ZZ or ZZ[x] to avoid reductions 
 // method = 3, BSGS not implemented
-#define DEFAULT_METHOD 2
+#define DEFAULT_VECTOR_REDUCTION_METHOD 1
+
+//see void get_reduction_matrix(Vec< Mat<R> > &M, R &Mden, const Vec<int64_t> &u, const Vec<int64_t> &w, int64_t method = DEFAULT_MATRIX_REDUCTION_METHOD);
+// method = 0, plain, no pre computations involved
+// method = 1, poly, if not already computed, first computes the matrix as polynomial in the entries of  multivariable polynomial
+// 
+// Unless, the dimension and the volume of the polytope are small, I highly recommend to precompute the reduction matrices as multivariable polynomials. There might be cases where this precomputation might become a bottle neck.
+#define DEFAULT_MATRIX_REDUCTION_METHOD 1
+
 
 
 //R = ZZ, ZZ_p, zz_p. ZZ_pE, or zz_pe
@@ -296,19 +304,54 @@ class dr{
          * J_n --> J_0 + J_1 + ... + J_n
          * where w \in P_m, st (m, j) != 0
          */
-        void get_reduction_matrix(Vec< Mat<R> > &M, R &Mden, const Vec<int64_t> &u, const Vec<int64_t> &w);
+
+
+        /*
+         * computes M 
+         * by first evaluating RHO at u + T*v
+         * and then following the scheme above
+         */
+        void get_reduction_matrix_plain(Vec< Mat<R> > &M, R &Mden, const Vec<int64_t> &u, const Vec<int64_t> &w);
+
+
+
         
         /*
          * same as above, but computes the matrix as polynomial in the u coordinates
          * computes a matrix M with coefficients in U0, ..., UN
          * such that M evaluated at the vector u, matches the matrix above
          */
-        void compute_reduction_polymatrix( const Vec<int64_t> &w);
+        void compute_reduction_matrix_poly( const Vec<int64_t> &w);
+        void get_reduction_matrix_poly(Vec< Mat<R> > &M, R &Mden, const Vec<int64_t> &u, const Vec<int64_t> &w);
+
         /*
          * where the matrices computed above are stored
          */
-        map< Vec<int64_t>, map< Vec<int64_t>, Mat<R>, vi64less>, vi64less> reduction_polymatrix_dict;
-        
+        map< Vec<int64_t>, pair<R, map< Vec<int64_t>, Mat<R>, vi64less> >, vi64less> reduction_poly_dict;
+    
+        void get_reduction_matrix(Vec< Mat<R> > &M, R &Mden, const Vec<int64_t> &u, const Vec<int64_t> &w, int64_t method = DEFAULT_MATRIX_REDUCTION_METHOD)
+        {
+            switch(method)
+            {
+                case 0:
+                    {
+                        get_reduction_matrix_plain(M, Mden, u, w);
+                        break;
+                    }
+                case 1:
+                    {
+                        get_reduction_matrix_poly(M, Mden, u, w);
+                        break;
+                    }
+                default:
+                    {
+                        get_reduction_matrix(M, Mden, u, w);
+                        break;
+                    }
+            }
+        }
+
+
         /*
          * reduction
          *
@@ -325,18 +368,30 @@ class dr{
          * = 
          * u \sum_i (m + i - 1)! bi omega / f^{m + i}
          */
-        void reduce_vector(Vec<R> &H, R &D, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t &k, const Vec<R> &G, int64_t method = DEFAULT_METHOD)
+        void reduce_vector(Vec<R> &H, R &D, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t &k, const Vec<R> &G, int64_t method = DEFAULT_VECTOR_REDUCTION_METHOD)
         {
             switch(method)
             {
                 case 0:
-                    reduce_vector_plain(H, D, u, v, k, G); break;
+                {
+                    reduce_vector_plain(H, D, u, v, k, G);
+                    break;
+                }
                 case 1:
-                    reduce_vector_finitediff_plain(H, D, u, v, k, G); break;
+                {
+                    reduce_vector_finitediff_plain(H, D, u, v, k, G);
+                    break;
+                }
                 case 2:
-                    reduce_vector_finitediff_lift(H, D, u, v, k, G); break;
+                {
+                    reduce_vector_finitediff_lift(H, D, u, v, k, G); 
+                    break;
+                }
                 default:
-                    reduce_vector(H, D, u, v, k, G); break;
+                {
+                    reduce_vector(H, D, u, v, k, G); 
+                    break;
+                }
             }
         }
         void reduce_vector_plain(Vec<R> &H, R &D, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t &k, const Vec<R> &G);
@@ -354,15 +409,24 @@ class dr{
         // computes the approximation of Frob(w \omega / f^m) using N terms in the Frobenius expansion
         // Frob(w \omega / f^m) ~ Frob(w) \sum_{j = 0} ^{N - 1} D_{j, m} Frob(f^j) f^{-p(m + j)}
  
-        void frob_monomial(Vec<R> &res, const Vec<int64_t> &w, int64_t N, int64_t method = DEFAULT_METHOD);
+        void frob_monomial(Vec<R> &res, const Vec<int64_t> &w, int64_t N, int64_t method = DEFAULT_VECTOR_REDUCTION_METHOD);
 
-        void frob_matrix(Mat<R> &res, Vec<int64_t> N, int64_t method = DEFAULT_METHOD);
+        void frob_matrix(Mat<R> &res, Vec<int64_t> N, int64_t method = DEFAULT_VECTOR_REDUCTION_METHOD);
 
         
 
         /*
          * Test functions
          */
+
+
+        /*
+         * loops over u \in P_k and v \in P_1
+         * and checks if the different methods to compute the reduction matrices agree
+         */
+        void test_reduction_matrices(const int64_t &k);
+
+
         /*
          * loops over u \in P_1, and checks if each entry of I_u
          * I_u : J_0 + ... + J_n --> P_1 + P_2 + ... + P_{n+1}
@@ -398,6 +462,9 @@ class dr{
             test_last_reduction();
             test_inclusion_matrices();
             test_monomial_to_basis();
+            for(int64_t k = 1; k < n + 1; k++)
+                test_reduction_matrices(k);
+
             if( verbose > 0)
                 cout << "dr::test_all() done" << endl;
         }
@@ -538,6 +605,7 @@ void dr<R>::init_tuples()
         reverse_dict(tuple_dict[i], tuple_list[i]);
         reverse_dict(tuple_int_dict[i], tuple_int_list[i]);
     }
+    
     if(verbose > 1)
     {
         Vec<int64_t> dimP, dimPint;
@@ -759,6 +827,7 @@ void dr<R>::init_solve_and_cokernels()
 template<typename R>
 void dr<R>::init_cokernels_I_basis()
 {
+    //FIXME ?? I don't remember what I was supposed to fix
     if(verbose > 1)
         cout<<"dr::init_cokernels_I_basis()"<<endl;
     cokernels_I_dimensions.SetLength(n + 1, int64_t(0));
@@ -816,14 +885,14 @@ void dr<R>::init_cokernels_I_basis(int64_t d)
     }
     else
     {
-        //I_d = (S^* + J(f) / J(f))_d
+        //I_d = (S^* + J(f) ) / J(f))_d
         Mat<R> J;
         Vec<int64_t> nonpivots;
         int64_t i, dim_Sintd;
         matrix_J(J, d);
         dim_Sintd = tuple_int_list[d].length();
 
-        //Matrinx representing S^*_d in S_d
+        //Matrix representing S^*_d in S_d
         Mat<R> T;
         T.SetDims(J.NumRows(), dim_Sintd);
         for(i = 0; i < dim_Sintd; i++)
@@ -1284,8 +1353,9 @@ void dr<R>::init_proj()
 }
 
 
+
 template<typename R>
-void dr<R>::get_reduction_matrix(Vec< Mat<R> > &M, R &Mden, const Vec<int64_t> &u, const Vec<int64_t> &v)
+void dr<R>::get_reduction_matrix_plain(Vec< Mat<R> > &M, R &Mden, const Vec<int64_t> &u, const Vec<int64_t> &v)
 {
     if( verbose > 2)
         cout << "dr::get_reduction_matrix(u = "<<u<<", v = "<<v<<")" << endl;
@@ -1356,7 +1426,8 @@ void dr<R>::get_reduction_matrix(Vec< Mat<R> > &M, R &Mden, const Vec<int64_t> &
                 {
                     //hi \in P_i
                     // ci = pi_i(h_i) \in J_i
-                    // cij corresponds to pi_i(h_ij)
+                    // ci*T^j corresponds to pi_i(h_i*T^j)
+                    // i.e., the jth entry in hi and M
                     Vec<R> cij;
                     cij = pi[i] * hi[j];
                     if( pi_den[i] != R(1) )
@@ -1396,45 +1467,49 @@ void dr<R>::get_reduction_matrix(Vec< Mat<R> > &M, R &Mden, const Vec<int64_t> &
 
 
 template<typename R>
-void dr<R>::compute_reduction_polymatrix(const Vec<int64_t> &v)
+void dr<R>::compute_reduction_matrix_poly(const Vec<int64_t> &v)
 {
     // do we really need to compute it?
-    typename map< Vec<int64_t>, map< Vec<int64_t>, Mat<R>, vi64less> , vi64less>::const_iterator it;
-    it = reduction_polymatrix_dict.find(v);
-    if( it != reduction_polymatrix_dict.end())
+    typename map< Vec<int64_t>, pair< R, map< Vec<int64_t>, Mat<R>, vi64less> >, vi64less>::const_iterator it;
+    it = reduction_poly_dict.find(v);
+    if( it != reduction_poly_dict.end())
         return;
 
     if( verbose > 1)
-        cout << "dr::compute_reduction_polymatrix(v = "<<v<<")\n";
+        cout << "dr::compute_reduction_poly(v = "<<v<<")\n";
 
     //asserts \deg v == 1
     assert_print(v[0], ==, 1);
-    
-    
-    map< Vec<int64_t>, map< Vec<int64_t>, Mat<R>, vi64less>, vi64less> M = reduction_polymatrix_dict[v];
-    
-    
+
     int64_t i, j, k, l , z;
     
+    
+    map< Vec<int64_t>, Mat<R>, vi64less> &M = reduction_poly_dict[v].second;
+    R &Mden = reduction_poly_dict[v].first;
+    Mden = R(1);
+    
+    
+    
     Vec<int64_t> shift; //shift[k] = sum(map(len, cokernels_J_basis[:k]))
-    shift.SetLength(max_pole + 1, int64_t(0));
-    for(k = 1; k < max_pole + 1; k++)
-    {
+    shift.SetLength(max_pole + 2, int64_t(0));
+    for(k = 1; k < max_pole + 2; k++)
         shift[k] = shift[k-1] + cokernels_J_basis[k-1].length();
-    }
+
+    for(k = 1; k < max_pole + 2; k++)
+        Mden *= rho_den[k];
+
 
     Vec<int64_t> zero;
-    zero.SetLength(n, 0);
+    zero.SetLength(n + 1, 0);
 
-    /*
-     * let alpha be a basis element in J_k
-     * M(alpha) = (c_0, c_1, c_2, ..., c_k, 0, ...)
-     * where
-     * h_{k + 1} = alpha + v \in P_{k + 1}
-     * c_i = pi_{i} (h_i)  \in J_i  with i <= k
-     * h_i = rho_{i + 1) u + Y*v} (h_{i + 1}) \in P_i with i <= k
-     */
-    for(k = 0; k < max_pole + 1; k++)
+    
+    // let alpha be a basis element in J_k
+    // M(alpha) = (c_0, c_1, c_2, ..., c_k, 0, ...)
+    // where
+    // h_{k + 1} = alpha + v \in P_{k + 1}
+    // c_i = pi_{i} (h_i)  \in J_i  with i <= k
+    // h_i = rho_{i + 1) u + Y*v} (h_{i + 1}) \in P_i with i <= k
+    for(k = 0; k < max_pole + 2; k++)
     {
         for(z = 0; z < cokernels_J_dimensions[k]; z++)
         {
@@ -1442,12 +1517,179 @@ void dr<R>::compute_reduction_polymatrix(const Vec<int64_t> &v)
             int64_t b_coordinate = shift[k] + z; // as an element in cokernels_J_basis
 
             // hi \in Vec(R[W0, ..., WN]) is represented as a dictionary
-            map< Vec<int64_t>, map< Vec<int64_t>, Vec<R>, vi64less>, vi64less> hi;
-            hi[zero].SetLength(tuple_list[k+1].length() );
-            //HERE
+            // monomial --> coefficient
+            map< Vec<int64_t>, Vec<R>, vi64less> hi;
+            hi[zero].SetLength( tuple_list[k + 1].length() );
+            hi[zero][ tuple_dict[k + 1][b + v] ] = Mden;
+            for(i = k + 1; i >= 0 ; i-- )
+            {
+                //deg of monomial is k + 1 - i, as expected
+                assert_print( (hi.begin()->first)[0], <= , k + 1 - i);
+                
+                // copy pi_i(hi) to the matrix
+                typename map< Vec<int64_t>, Vec<R>, vi64less>::const_iterator cit;
+                for(cit = hi.begin(); cit != hi.end(); cit++)
+                {
+                    // ci = pi_i(hi) \in J_i
+                    // ci[v] corresponds to pi_i( h_i[v])
+                    // where u = zero or ej
+                    const Vec<int64_t> &w = cit->first;
+                    const Vec<R> &hiw = cit->second;
+                    Vec<R> ciw;
+                    ciw = pi[i] * hiw;
+                    if( pi_den[i] != R(1) )
+                        ciw = ciw/pi_den[i];
+
+                    Mat<R> &Mw = M[w];
+                    Mw.SetDims(dim_J, dim_J);
+                    for(l = 0; l < cokernels_J_dimensions[i]; l++)
+                    {
+                        Mw[shift[i] + l][b_coordinate] += ciw[l];
+                    }
+                }   
+                if(i > 0)
+                {
+                    //h_{i -1} = \rho_{i} (hi) \in P_{i-1}
+                    map< Vec<int64_t>, Vec<R>, vi64less> hnew;
+                    int64_t hnew_length = tuple_list[i - 1].length();
+                    for(cit = hi.begin(); cit != hi.end(); cit++)
+                    {
+                        Vec<int64_t> w = cit->first;
+                        const Vec<R> &hiw = cit->second;
+
+                        // recall rho[i][0] corresponds to the constant coefficient
+                        // and rho[i][j+1] corresponds to the W_j coefficient
+                        
+                        //deal with the constant coefficient
+                        if( hnew.find(w) == hnew.end() )
+                            hnew[w].SetLength(hnew_length, conv<R>(0));
+                        hnew[w] += rho[i][0] * hiw;
+
+                        for(j = 0; j < n + 1; j++)
+                        {
+                            Vec<int64_t> t = w;
+                            t[j]++;
+                            // assure the right length
+                            if( hnew.find(t) == hnew.end() )
+                                hnew[t].SetLength(hnew_length, conv<R>(0));
+                            hnew[t] += rho[i][j+1] * hiw;
+                        }
+                    }
+
+                    // deal with denominators
+                    if( rho_den[i] != R(1) )
+                    {
+                        typename map< Vec<int64_t>, Vec<R>, vi64less>::iterator it;
+                        for( it = hnew.begin(); it != hnew.end(); it++ )
+                            it->second = it->second / rho_den[i];
+                    }
+                    hi.swap(hnew);
+                }
+            }
+        }
+    }
+
+}
+
+template<typename R>
+void dr<R>::get_reduction_matrix_poly(Vec< Mat<R> > &M, R &Mden, const Vec<int64_t> &u, const Vec<int64_t> &v)
+{
+    if( verbose > 2)
+        cout << "dr::get_reduction_matrix(u = "<<u<<", v = "<<v<<")" << endl;
+
+    typename map< Vec<int64_t>, pair< R, map< Vec<int64_t>, Mat<R>, vi64less> > , vi64less>::const_iterator it;
+
+    it = reduction_poly_dict.find(v);
+    if( it == reduction_poly_dict.end())
+    {
+        compute_reduction_matrix_poly(v);
+        it = reduction_poly_dict.find(v);
+        assert(it != reduction_poly_dict.end());
+    }
+    //Now we evaluate the polynomial matrix M(U0, U1, .., UN) at M(u + Y v)
+    Mden = (it->second).first;
+    const map< Vec<int64_t>, Mat<R>, vi64less> &Mdict = (it->second).second;
+
+    int64_t i;
+    
+    // initialize M
+    // release space and set to length 0    
+    M.kill();
+    M.SetLength(max_pole + 2);
+    for(i = 0; i < max_pole + 2; i++)
+        M[i].SetDims(dim_J, dim_J);
+    
+    typename map< Vec<int64_t>, Mat<R>, vi64less>::const_iterator itM;
+    ZZX monomial_evaluated;
+    Vec<ZZ> monomial;
+    for(itM = Mdict.begin(); itM != Mdict.end(); itM++)
+    {
+        // itM->first = alpha = (alpha0, alpha1,..., alpha_n) representing U^alpha 
+        // we want to compute (u + Y*v)^alpha
+        const Vec<int64_t> &alpha = itM->first;
+        //monomial_evaluated = ZZX(1);
+        set(monomial_evaluated);
+        for( i = 0; i < n + 1; i++)
+        {
+            if(alpha[i] != 0 and u[i] == 0 and v[i] == 0)
+            {
+                clear(monomial_evaluated);
+                break;
+            }
+            binomial_expansion(monomial, u[i], v[i], alpha[i]);
+            monomial_evaluated *= conv<ZZX>(monomial);
+        }
+        assert_print( deg(monomial_evaluated), <= , max_pole + 1);
+        for(i = 0; i < deg(monomial_evaluated) + 1; i++)
+            M[i] += conv<R>(monomial_evaluated[i]) * (itM->second);
+    }
+    if( verbose > 2)
+        cout << "dr::get_reduction_matrix(u = "<<u<<", v = "<<v<<") done" << endl;
+}
+
+
+    template<typename R>
+void dr<R>::test_reduction_matrices(const int64_t &k)
+{
+    int64_t i, j, l;
+    for(l = 0; l < tuple_list[1].length(); l++)
+    {
+        Vec<int64_t> &v = tuple_list[1][l];
+        for(i = 0; i < tuple_list[k].length(); i++)
+        {
+            Vec<int64_t> &u = tuple_list[k][i];
+            Vec< Mat<R> > Mpoly, Mplain;
+            R den_poly, den_plain;
+            get_reduction_matrix_poly( Mpoly, den_poly, u, v);
+            get_reduction_matrix_plain( Mplain, den_plain, u, v);
+            for(j = 0; j < max_pole + 1; j++)
+            {
+                if( Mplain[j] * den_poly != Mpoly[j] * den_plain)
+                {
+                    cout << "FAIL" <<endl;
+                    print(Mplain.length());
+                    print(u);
+                    print(v);
+                    print(j);
+                    cout << endl;
+                    print(Mplain[j]);
+                    print(den_plain);
+                    cout << endl;
+                    print(Mpoly[j]);
+                    print(den_poly);
+                    print(Mplain[j] - Mpoly[j]);
+
+                    cout << endl << endl;
+                    cout <<= reduction_poly_dict[v].second;
+                    cout << endl;
+
+                    assert(false);
+                }
+            }
         }
     }
 }
+
 
 template<typename R>
 void dr<R>::reduce_vector_plain(Vec<R> &H, R &D, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t &k, const Vec<R> &G)
@@ -1489,7 +1731,7 @@ template<typename R>
 void dr<R>::reduce_vector_finitediff_plain(Vec<R> &H,  R &D, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t &k, const Vec<R> &G)
 {
     if( verbose > 2)
-        cout << "dr::reduce_vector_finitediff_plain(u = "<<u<<", v = "<<v<<")" << endl;
+        cout << "dr::reduce_vector_finitediff_plain(u = "<<u<<", v = "<<v<<", k = "<<k<<")" << endl;
     if(k <= n +1)
         reduce_vector_plain(H, D, u, v, k, G);
     else
@@ -1507,7 +1749,7 @@ template<typename R>
 void dr<R>::reduce_vector_finitediff_lift(Vec<R> &H,  R &D, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t &k, const Vec<R> &G)
 {
     if( verbose > 2)
-        cout << "dr::reduce_vector_finitediff_lift(u = "<<u<<", v = "<<v<<")" << endl;
+        cout << "dr::reduce_vector_finitediff_lift(u = "<<u<<", v = "<<v << ", k = "<<k<<")" << endl;
     if(k <= n +1)
         reduce_vector_plain(H, D, u, v, k, G);
     else

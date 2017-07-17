@@ -66,6 +66,11 @@ using namespace NTL;
 //returns binomial(n, k)
 ZZ binomial(int64_t n, int64_t k);
 
+// returns the the vector v = [v0, v1, ..., vn]
+// that represents the polynomial 
+// sum vi Y^i = (a + Y b)^n
+void binomial_expansion(Vec<ZZ> &v, const int64_t &a, const int64_t &b, const int64_t &n);
+
 /*
  * returns factorial(n)/factorial(start-1)
  */
