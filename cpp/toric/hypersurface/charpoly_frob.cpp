@@ -23,7 +23,7 @@ void charpoly_frob(Vec<ZZ> &cp, const Mat<ZZ> &frob_matrix, const Vec<int64_t> &
         mod[i] =power_ZZ(p, charpoly_prec[i]);
         cp[i] = cp[i] % mod[i];
     }
-    
+
     // figure out the sign
     if( weight % 2 == 1)
         // for odd weight the sign is always 1
@@ -34,15 +34,14 @@ void charpoly_frob(Vec<ZZ> &cp, const Mat<ZZ> &frob_matrix, const Vec<int64_t> &
     {
         for(i = 0; i < degree + 1; i++)
         {
-            ZZ p_power = power_ZZ(p, min(charpoly_prec[i], charpoly_prec[degree - i] + a * (degree - 2 * i)) * (weight /2) );
-            if( cp[i] % p_power !=0 && cp[degree-i] % p_power != 0)
-            {
-                if (0 == (cp[i] + cp[degree - i] * power_ZZ(p, a * (degree - 2 * i)) * (weight /2) ) %  p_power )
+            ZZ p_power = power_ZZ(p, min(charpoly_prec[i], charpoly_prec[degree - i] + a * (degree - 2 * i) * (weight /2) ));
+            if( cp[i] % p_power != 0 and cp[degree-i] % p_power != 0 ) {
+                if (0 == (cp[i] + cp[degree - i] * power_ZZ(p, a * (degree - 2 * i) * (weight /2) )) %  p_power )
                     sign = -1;
                 else
                     sign = 1;
 
-                assert_print(0, ==, (sign * cp[i] - cp[degree - i] * power_ZZ(p, a * (degree - 2 * i)) * (weight /2) ) %  p_power );
+                assert_print(0, ==, ( sign * cp[i] - cp[degree - i] * power_ZZ(p, a * (degree - 2 * i) * (weight /2) ) ) %  p_power );
                 break;
             }
         }
