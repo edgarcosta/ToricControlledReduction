@@ -37,6 +37,8 @@ timestamp_type end)
 #else
 
 #include <time.h>
+#include <cmath>
+#include <iostream>
 
 typedef struct timespec timestamp_type;
 
@@ -106,7 +108,7 @@ inline void tpreport()
 	extern uint64_t timein;
 	timein=cycle_counter()-timein;
 	map<string,uint64_t>::const_iterator end=tpmap.end();
-	cout<<"       cycles          where"<<endl;
+    cout <<"       cycles          where"<< endl;
 	for(map<string,uint64_t>::iterator it=tpmap.begin();it!=end;++it)
 	{
 		cout << " " << setw(12) << it->second << setw(7) << setprecision(2) << fixed <<
