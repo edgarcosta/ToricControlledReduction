@@ -6,11 +6,18 @@
 //see hypersurface.h for more details
 void zeta_and_frob_Fp(Vec<ZZ> &zeta, Mat<ZZ> &F, Vec<int64_t> &hodge_numbers, Vec<int64_t>& r_vector, const int64_t &p, const map< Vec<int64_t>, ZZ, vi64less> &f, const Mat<int64_t> &AP, const Vec<int64_t> &bP, const int64_t &verbose)
 {
+    timestamp_type wtime1, wtime2;
+    get_timestamp(&wtime1);
+    double wall_time, user_time;
+    user_time = get_cpu_time();
+    if(verbose > 1) {
+        std::cout << "zeta_and_frob_Fp() begin\n";
+    }
     int64_t a, weight, precision;
     Vec<int64_t> charpoly_prec, N;
     a = 1;
-    
-    
+
+
     //get the hodge numbers, to determine working precision
     {
         zz_pPush push(p);
@@ -54,6 +61,15 @@ void zeta_and_frob_Fp(Vec<ZZ> &zeta, Mat<ZZ> &F, Vec<int64_t> &hodge_numbers, Ve
     if(verbose > 0)
         print(F);
     charpoly_frob(zeta, F, charpoly_prec, weight, p, a);
+    get_timestamp(&wtime2);
+
+    if(verbose > 1) {
+        print(zeta);
+        std::cout << "\n";
+        wall_time = timestamp_diff_in_seconds(wtime1,wtime2);
+        user_time = get_cpu_time() - user_time;
+        printf("zeta_and_frob_Fp() end \t Time: CPU %.2f s, Wall: %.2f s\n", user_time, wall_time );
+    }
 }
 
 
