@@ -23,6 +23,13 @@ bool test_Fp(const char *input, const char *output, const int64_t &verbose)
         print(hodge_numbers);
         return false;
     }
+    cout <<"F = ";
+    cout <<=F;
+    cout << endl;
+    cout <<"zeta = ";
+    cout <<=zeta;
+    cout << endl;
+    cout << endl;
     return true;
 }
 
