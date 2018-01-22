@@ -40,7 +40,7 @@ void finitediff_plain(Vec<R> &H, const int64_t &k, const Vec<R> &G, const Vec< M
     Mfd.SetLength(n + 2);
     for(l = 0; l < n + 2; l++)
     {
-        //compute initial table of differences over S
+        //compute initial table of differences 
         Mfd[l].SetDims(d, d);
         for(i = 0; i < n + 2; i++)
         {
