@@ -634,7 +634,7 @@ void init_f_power_core(int64_t N, map< Vec<int64_t>, R, vi64less>  &F, Vec< map<
         Fpow.SetMaxLength(N + 1);
         Fpow.SetLength(Fpowers.length());
         for(int64_t i = 0; i < Fpowers.length(); i++)
-            Fpow[i] = Fpowers[i];
+            Fpow[i].insert(Fpowers[i].begin(), Fpowers[i].end());
 
         //deal with the corner case that we have not done anything yet
         if( Fpow.length() < 2)
@@ -667,7 +667,7 @@ void init_f_power_core(int64_t N, map< Vec<int64_t>, R, vi64less>  &F, Vec< map<
             Fpow.append(Y);
         }
         //replace Fpowers with Fpow (which wasn't reallocated)
-        Fpowers = Fpow;
+        swap(Fpowers, Fpow);
     }
     assert_print(Fpowers.length(), >=, N + 1);
 }
@@ -1934,10 +1934,8 @@ void dr<R>::frob_monomial(Vec<R> &F, const Vec<int64_t> &w, int64_t N, int64_t m
     user_time = get_cpu_time();
     get_timestamp(&wtime1);
 
-
     assert_print(p, !=, 0);
-    
-    
+
     init_f_frob_power(N - 1);
     int64_t i, j, m, e, end;
     R fact = R(1);
@@ -1968,18 +1966,21 @@ void dr<R>::frob_monomial(Vec<R> &F, const Vec<int64_t> &w, int64_t N, int64_t m
             typename map< Vec<int64_t>, R, vi64less >::const_iterator fjit;
             for(fjit = f_frob_power[j].cbegin(); fjit != f_frob_power[j].cend(); fjit++)
             {
-                Vec<int64_t> monomial = w + fjit->first;
-                Hit = H.find(monomial);
-                if( Hit == H.end() )
+                if(fjit->second != 0)
                 {
-                    H[monomial].SetLength(dim_J, R(0));
+                    Vec<int64_t> monomial = w + fjit->first;
+                    Hit = H.find(monomial);
+                    if( Hit == H.end() )
+                    {
+                        H[monomial].SetLength(dim_J, R(0));
+                    }
+                    H[monomial][0] += Djm * fact * fjit->second;
                 }
-                H[monomial][0] += Djm * fact * fjit->second;
             }
         }
 
         end = (e > 1) ? p : p - 1;
-       
+
         for(i = 0; i < end; i++)
             fact *= p*e - i - 1;
 
@@ -1990,7 +1991,7 @@ void dr<R>::frob_monomial(Vec<R> &F, const Vec<int64_t> &w, int64_t N, int64_t m
             shift = w;
         else
             shift.SetLength(n + 1, int64_t(0));
-        
+
         for(Hit = H.cbegin();  Hit != H.end(); Hit++)
         {
             const Vec<int64_t> &u = Hit->first;
