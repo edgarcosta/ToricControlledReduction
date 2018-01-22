@@ -78,7 +78,7 @@ template<typename R>
 R  factorial(const int64_t &n, const int64_t &start = 1)
 {
     R result=R(1);
-    for(int64_t i = start; i <=n ; i++)
+    for(int64_t i = start; i <=n ; ++i)
         result *= i;
     return result;
 }
@@ -90,7 +90,7 @@ template<typename R> void factorial_padic(R &result, int64_t &val, const int64_t
     result = 1;
     val = 0;
     int64_t i, tmp;
-    for(i = start; i <= n; i++)
+    for(i = start; i <= n; ++i)
     {
         if(i%p != 0)
             result *= i;
@@ -116,7 +116,7 @@ template<typename T>
 T sum(const Vec<T>& a)
 {
     T res = T(0);
-    for(int64_t i = 0; i < a.length(); i++)
+    for(int64_t i = 0; i < a.length(); ++i)
         res += a[i];
     return res;
 }
@@ -125,7 +125,7 @@ template<typename T>
 T prod(const Vec<T>& a)
 {
     T res = T(1);
-    for(int64_t i = 0; i < a.length(); i++)
+    for(int64_t i = 0; i < a.length(); ++i)
         res *= a[i];
     return res;
 }
@@ -143,7 +143,7 @@ inline Vec<ZZ> operator/(const Vec<ZZ> &v, const ZZ &b)
 {
     Vec<ZZ> res;
     res.SetLength(v.length());
-    for(int64_t i = 0; i < v.length(); i++)
+    for(int64_t i = 0; i < v.length(); ++i)
         res[i] = v[i]/b;
     return res;
 }
@@ -152,7 +152,7 @@ template<typename T>
 T max(const Vec<T> &v)
 {
     T m = v[0];
-    for(int64_t i = 1; i < v.length(); i++)
+    for(int64_t i = 1; i < v.length(); ++i)
         if(v[i] > m)
             m = v[i];
     return m;
@@ -161,7 +161,7 @@ template<typename T>
 T min(const Vec<T> &v)
 {
     T m = v[0];
-    for(int64_t i = 1; i < v.length(); i++)
+    for(int64_t i = 1; i < v.length(); ++i)
         if(v[i] < m)
             m = v[i];
     return m;
@@ -174,7 +174,7 @@ void mul(T &res, const Vec<T> &v, const Vec<T> &w)
     assert_print(v.length(), ==, w.length());
     res = T(0);
     T tmp;
-    for(int64_t i = 0; i < v.length(); i++)
+    for(int64_t i = 0; i < v.length(); ++i)
     {
         mul(tmp, v[i], w[i]);
         add(res, res, tmp);
@@ -194,7 +194,7 @@ void mul(Vec<T> &v, const Mat<T> &A, const Vec<T> &b)
     assert_print(b.length(), ==, A.NumCols());
     Vec<T> tmp;
     tmp.SetLength(b.length());
-    for(int64_t i = 0; i < b.length(); i++)
+    for(int64_t i = 0; i < b.length(); ++i)
         mul(tmp[i], A[i], b);
     swap(tmp, v);
 }
@@ -214,7 +214,7 @@ void add(Vec<T> &res, const Vec<T> &v, const Vec<T> &w)
 {
     assert_print(v.length(), ==, w.length());
     res.SetLength(v.length());
-    for(int64_t i = 0; i < v.length(); i++)
+    for(int64_t i = 0; i < v.length(); ++i)
         add(res[i], v[i], w[i]);
 }
 
@@ -238,7 +238,7 @@ void sub(Vec<T> &res, const Vec<T> &v, const Vec<T> &w)
 {
     assert_print(v.length(), ==, w.length());
     res.SetLength(v.length());
-    for(int64_t i = 0; i < v.length(); i++)
+    for(int64_t i = 0; i < v.length(); ++i)
         sub(res[i], v[i], w[i]);
 }
 
@@ -263,7 +263,7 @@ void sub(Mat<T> &res, const Mat<T> &A, const Mat<T> &B)
     assert_print(A.NumRows(), ==, B.NumRows());
     assert_print(A.NumCols(), ==, B.NumCols());
     res.SetDims(res.NumRows(), res.NumCols());
-    for(int64_t i = 0; i < A.NumRows(); i++)
+    for(int64_t i = 0; i < A.NumRows(); ++i)
         sub(res[i], A[i], B[i]);
 }
 template<typename T>
@@ -291,7 +291,7 @@ NTL_SNS istream & operator>>(NTL_SNS istream& s, map< Vec<T>, R, Compare>& a)
     s >> coefficients;
     assert_print(monomials.length(), ==, coefficients.length());
     map< Vec<T>, R, Compare> ibuf;
-    for(int64_t i = 0; i < coefficients.length(); i++)
+    for(int64_t i = 0; i < coefficients.length(); ++i)
         ibuf[monomials[i]] = coefficients[i];
     a = ibuf;
     return s;
@@ -309,7 +309,7 @@ NTL_SNS ostream & operator<<(NTL_SNS ostream& s, const  map< Vec<T>, R, Compare>
         
     monomials.SetDims(a.size(), a.cbegin()->first.length());
     coefficients.SetLength(a.size());
-    for(i = 0, it = a.cbegin(); it != a.cend(); it++, i++)
+    for(i = 0, it = a.cbegin(); it != a.cend(); ++it, ++i)
     {
         monomials[i] = it->first;
         coefficients[i] = it->second;
@@ -319,7 +319,31 @@ NTL_SNS ostream & operator<<(NTL_SNS ostream& s, const  map< Vec<T>, R, Compare>
     return s;
 }
 
-//similar to << but more human readable and compatible with sage 
+
+template<typename S>
+NTL_SNS ostream & operator<<=(NTL_SNS ostream& s, const S& a)
+{
+    s << a;
+    return s;
+}
+
+//similar to << but more human readable and compatible with SAGE 
+template<typename T>
+NTL_SNS ostream & operator<<=(NTL_SNS ostream& s, const Mat<T>& a)
+{
+    int64_t i, n;
+    n = a.NumRows();
+    s <<"[";
+    for(i = 0; i < n; ++i)
+    {
+        s <<= a[i];
+        if(i<n-1) s<<",\n";
+    }
+    s << "]";
+    return s;
+}
+
+//similar to << but more human readable and compatible with SAGE 
 template<typename T>
 NTL_SNS ostream & operator<<=(NTL_SNS ostream& s, const Vec<T>& a)
 {
@@ -328,14 +352,14 @@ NTL_SNS ostream & operator<<=(NTL_SNS ostream& s, const Vec<T>& a)
     s <<"(";
     for(i = 0; i < n; ++i)
     {
-        s << a[i];
+        s <<= a[i];
         if(i<n-1) s<<", ";
     }
     s << ")";
     return s;
 }
 
-//similar to << but more human readable and compatible with sage
+//similar to << but more human readable and compatible with SAGE
 template<typename T, typename R, typename Compare>
 NTL_SNS ostream & operator<<=(NTL_SNS ostream& s, const map< Vec<T>, R, Compare>& a)
 {
@@ -353,7 +377,7 @@ NTL_SNS ostream & operator<<=(NTL_SNS ostream& s, const map< Vec<T>, R, Compare>
             s <<",\n ";
         /*else
             break;*/
-        i++;
+        ++i;
     }
     s << "}";
     return s;
@@ -394,7 +418,7 @@ int64_t min_intP(const Mat<int64_t> &AP, const Vec<int64_t> &bP, const Vec<int64
 // reverse dict
 template<typename T, typename Compare> void reverse_dict(map<T, int64_t, Compare> &dict, const Vec<T> &v)
 {
-    for(int64_t i = 0; i < v.length(); i++)
+    for(int64_t i = 0; i < v.length(); ++i)
         dict[v[i]] = i;
 }
 
