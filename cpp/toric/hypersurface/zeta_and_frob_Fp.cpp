@@ -41,8 +41,9 @@ void zeta_and_frob_Fp(Vec<ZZ> &zeta, Mat<ZZ> &F, Vec<int64_t> &hodge_numbers, Ve
     }
 
     ZZ mod = power_ZZ(p, precision);
+    //print(precision); //FIXME
 
-    if(NumBits(mod) < NTL_SP_NBITS)
+    if(NumBits(mod) <= NTL_SP_NBITS)
     {
         zz_pPush push(conv<long>(mod));
         dr<zz_p> dr(p, conv<map< Vec<int64_t>, zz_p, vi64less> >(f), AP, bP, verbose, false);
