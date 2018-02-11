@@ -42,7 +42,7 @@ using namespace NTL;
 // method = 1, finite diff
 // method = 2, finite diff working over ZZ or ZZ[x] to avoid reductions 
 // method = 3, BSGS not implemented
-#define DEFAULT_VECTOR_REDUCTION_METHOD 1
+#define DEFAULT_VECTOR_REDUCTION_METHOD 0
 
 //see void get_reduction_matrix(Vec< Mat<R> > &M, R &Mden, const Vec<int64_t> &u, const Vec<int64_t> &w, int64_t method = DEFAULT_MATRIX_REDUCTION_METHOD);
 // method = 0, plain, no pre computations involved
@@ -84,8 +84,12 @@ class dr{
          * write I_d = (S^* + J(f) / J(f))_d
          * 
          * then:
-         * PH^{n-1} (Y) = P_1 + J_2 + ... + J_n
+         * H^{n} (T \ Y) = P_1 + J_2 + ... + J_n = n! vol(Delta) + n
+         * PH^{n-1} (Y) = J_1 + J_2 + ... + J_n = n! vol(Delta) - 1
          * PH^{n-1} (X) = P^*_1 + I_2 + ... + I_n 
+         * 
+         *
+         * NOTE Feb 5, 2018: I think it is H^n(P\X) instead of PH^{n-1}(Y)
          */
 
         /* 
@@ -1477,6 +1481,10 @@ void dr<R>::compute_reduction_matrix_poly(const Vec<int64_t> &v)
 
     if( verbose > 1)
         cout << "dr::compute_reduction_poly(v = "<<v<<")\n";
+    timestamp_type time1, time2;
+    double wall_time, user_time;
+    user_time = get_cpu_time();
+    get_timestamp(&time1);
 
     //asserts \deg v == 1
     assert_print(v[0], ==, 1);
@@ -1559,7 +1567,6 @@ void dr<R>::compute_reduction_matrix_poly(const Vec<int64_t> &v)
 
                         // recall rho[i][0] corresponds to the constant coefficient
                         // and rho[i][j+1] corresponds to the W_j coefficient
-                        
                         //deal with the constant coefficient
                         if( hnew.find(w) == hnew.end() )
                             hnew[w].SetLength(hnew_length, conv<R>(0));
@@ -1588,7 +1595,14 @@ void dr<R>::compute_reduction_matrix_poly(const Vec<int64_t> &v)
             }
         }
     }
-
+    get_timestamp(&time2);
+    wall_time = timestamp_diff_in_seconds(time1,time2);
+    user_time = get_cpu_time() - user_time;
+    if( verbose > 1 )
+    {
+        cout << "dr::compute_reduction_poly(v = "<<v<<") done ";
+        printf("Time: CPU %.2f s, Wall: %.2f s\n", user_time, wall_time );
+    }
 }
 
 template<typename R>
@@ -1596,6 +1610,10 @@ void dr<R>::get_reduction_matrix_poly(Vec< Mat<R> > &M, R &Mden, const Vec<int64
 {
     if( verbose > 2)
         cout << "dr::get_reduction_matrix(u = "<<u<<", v = "<<v<<")" << endl;
+    // timestamp_type time1, time2;
+    // double wall_time, user_time;
+    // user_time = get_cpu_time();
+    // get_timestamp(&time1);
 
     typename map< Vec<int64_t>, pair< R, map< Vec<int64_t>, Mat<R>, vi64less> > , vi64less>::const_iterator it;
 
@@ -1643,8 +1661,15 @@ void dr<R>::get_reduction_matrix_poly(Vec< Mat<R> > &M, R &Mden, const Vec<int64
         for(i = 0; i < deg(monomial_evaluated) + 1; i++)
             M[i] += conv<R>(monomial_evaluated[i]) * (itM->second);
     }
+
+    //get_timestamp(&time2);
+    //wall_time = timestamp_diff_in_seconds(time1,time2);
+    //user_time = get_cpu_time() - user_time;
     if( verbose > 2)
+    {
         cout << "dr::get_reduction_matrix(u = "<<u<<", v = "<<v<<") done" << endl;
+        //printf("Time: CPU %.2f s, Wall: %.2f s\n", user_time, wall_time );
+    }
 }
 
 
@@ -1694,37 +1719,54 @@ void dr<R>::test_reduction_matrices(const int64_t &k)
 template<typename R>
 void dr<R>::reduce_vector_plain(Vec<R> &H, R &D, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t &k, const Vec<R> &G)
 {
-    if( verbose > 2)
-        cout << "dr::reduce_vector_plain(u = "<<u<<", v = "<<v<<")" << endl;
-    int64_t i, l, dim_low;
-    dim_low = dim_J - cokernels_J_dimensions[n]; // sum(self.coKernels_J_dimensions[:self.n]) 
+    if( verbose > 2) {
+        cout << "dr::reduce_vector_plain(u = "<<u<<", v = "<<v<<", k = "<<k<<")" << endl;
+        cout << G << endl;
+    }
+
+    timestamp_type wtime1, wtime2;
+    double wall_time, user_time;
+    user_time = get_cpu_time();
+    get_timestamp(&wtime1);
+
+    int64_t dim_low = dim_J - cokernels_J_dimensions[n]; // sum(self.coKernels_J_dimensions[:self.n]) 
     Vec< Mat<R> > M;
     R Mden;
     get_reduction_matrix(M, Mden, u, v);
     Vec<R> Gin, Gout;
     Gin = G;
     D = 1;
-    for(l = k - 1; l > 0; l--)
+    double ttime, utime;
+    ttime = 0;
+    for(int64_t l = k - 1; l > 0; l--)
     {
         D *= Mden;
         R lpower = R(1);
         Gout = M[0] * Gin;
-        for(i = 1; i < n + 1; i++)
+        utime = get_cpu_time();
+        for(int64_t i = 1; i < n + 1; i++)
         {
             lpower *= l;//lpower = l^i
             Gout += lpower * (M[i] * Gin);
         }
+        ttime += get_cpu_time() - utime;
         //taking advantage that \dim J_0 = 1
         lpower *= l; //lpower = l^(n+1)
-        for(i = 0; i < cokernels_J_dimensions[n]; i++)
-            Gout[0] += lpower * M[n + 1][0][dim_low + i] * Gin[dim_low + i];
+        for(int64_t i = 0; i < cokernels_J_dimensions[n]; i++)
+            Gout[0] += lpower * (M[n + 1][0][dim_low + i] * Gin[dim_low + i]);
 
         Gin = Gout;
     }
     H = M[0] * Gin;
     D *= Mden;
     if( verbose > 2)
-        cout << "dr::reduce_vector_plain(u = "<<u<<", v = "<<v<<") done" << endl;
+    {
+        get_timestamp(&wtime2);
+        wall_time = timestamp_diff_in_seconds(wtime1,wtime2);
+        user_time = get_cpu_time() - user_time;
+        cout << "dr::reduce_vector_plain(u = "<<u<<", v = "<<v<<") done";
+        printf(" Time: CPU %.2f s, Wall: %.2f s\n", user_time, wall_time );
+    }
 }
 
 template<typename R>
@@ -1732,6 +1774,11 @@ void dr<R>::reduce_vector_finitediff_plain(Vec<R> &H,  R &D, const Vec<int64_t> 
 {
     if( verbose > 2)
         cout << "dr::reduce_vector_finitediff_plain(u = "<<u<<", v = "<<v<<", k = "<<k<<")" << endl;
+    timestamp_type wtime1, wtime2;
+    double wall_time, user_time;
+    user_time = get_cpu_time();
+    get_timestamp(&wtime1);
+
     if(k <= n +1)
         reduce_vector_plain(H, D, u, v, k, G);
     else
@@ -1743,13 +1790,24 @@ void dr<R>::reduce_vector_finitediff_plain(Vec<R> &H,  R &D, const Vec<int64_t> 
         D = power(Mden, k);
     }
     if( verbose > 2)
-        cout << "dr::reduce_vector_finitediff_plain(u = "<<u<<", v = "<<v<<") done" << endl;
+    {
+        get_timestamp(&wtime2);
+        wall_time = timestamp_diff_in_seconds(wtime1,wtime2);
+        user_time = get_cpu_time() - user_time;
+        cout << "dr::reduce_vector_finitediff_plain(u = "<<u<<", v = "<<v<<") done";
+        printf(" Time: CPU %.2f s, Wall: %.2f s\n", user_time, wall_time );
+    }
 }
 template<typename R>
 void dr<R>::reduce_vector_finitediff_lift(Vec<R> &H,  R &D, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t &k, const Vec<R> &G)
 {
     if( verbose > 2)
         cout << "dr::reduce_vector_finitediff_lift(u = "<<u<<", v = "<<v << ", k = "<<k<<")" << endl;
+    timestamp_type wtime1, wtime2;
+    double wall_time, user_time;
+    user_time = get_cpu_time();
+    get_timestamp(&wtime1);
+
     if(k <= n +1)
         reduce_vector_plain(H, D, u, v, k, G);
     else
@@ -1761,7 +1819,13 @@ void dr<R>::reduce_vector_finitediff_lift(Vec<R> &H,  R &D, const Vec<int64_t> &
         D = power(Mden, k);
     }
     if( verbose > 2)
-        cout << "dr::reduce_vector_finitediff_lift(u = "<<u<<", v = "<<v<<") done" << endl;
+    {
+        get_timestamp(&wtime2);
+        wall_time = timestamp_diff_in_seconds(wtime1,wtime2);
+        user_time = get_cpu_time() - user_time;
+        cout << "dr::reduce_vector_finitediff_lift(u = "<<u<<", v = "<<v<<") done";
+        printf(" Time: CPU %.2f s, Wall: %.2f s\n", user_time, wall_time );
+    }
 }
 
 

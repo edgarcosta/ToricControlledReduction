@@ -28,16 +28,17 @@ void frob_Fq(Mat<ZZX> &F, Vec<int64_t> &hodge_numbers, Vec<int64_t>& r_vector, V
     relative_precision(r_vector, charpoly_prec, hodge_numbers, weight, p, a); 
     //deduce N_vector
     N_vector(N, r_vector, weight, p);
+    precision = working_precision(N, r_vector, p);
     if(verbose > 0)
     {
         print(hodge_numbers);
         print(r_vector);
         print(N);
         print(charpoly_prec);
+        print(precision);
     }
-    precision = working_precision(N, r_vector, p);
     ZZ mod = power_ZZ(p, precision);
-    if(NumBits(mod) < NTL_SP_NBITS)
+    if(NumBits(mod) <= NTL_SP_NBITS)
     {
         zz_pPush push1(conv<long>(mod));
         {

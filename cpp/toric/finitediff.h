@@ -53,13 +53,11 @@ void finitediff_plain(Vec<R> &H, const int64_t &k, const Vec<R> &G, const Vec< M
         //u v^{(k - 1 - l)  + 1} --> u v^{(k - 1 - l)}
         // Mfd[n + 1 -l] = M(k - 1 - l)
         mul(H, Mfd[n + 1 - l], H);
-    
     // make Mfd[l] = M[a, a - 1, ..., a - l]
     // where a = k - 1 - (n + 1);
     for(l = 1; l < n + 2; l++)
         for(j = n + 1; j >= l; j--)
             sub(Mfd[j], Mfd[j], Mfd[j - 1]);
-    
 
     for(l = 0; l < (k - 1 - (n + 1)); l++)
     {

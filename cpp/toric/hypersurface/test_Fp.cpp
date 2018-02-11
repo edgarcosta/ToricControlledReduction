@@ -6,7 +6,6 @@
 bool test_Fp(const char *input, const char *output, const int64_t &verbose)
 {
     stringstream buffer;
-    
     Vec<ZZ> zeta, zeta_expected;
     Mat<ZZ> F;
     Vec<int64_t> hodge_numbers, r_vector;
@@ -14,7 +13,6 @@ bool test_Fp(const char *input, const char *output, const int64_t &verbose)
 
     buffer << output;
     buffer >> zeta_expected;
-    
     if(zeta_expected != zeta)
     {
         cout << "FAIL" <<endl;
@@ -23,13 +21,11 @@ bool test_Fp(const char *input, const char *output, const int64_t &verbose)
         print(hodge_numbers);
         return false;
     }
-    cout <<"F = ";
-    cout <<=F;
-    cout << endl;
-    cout <<"zeta = ";
-    cout <<=zeta;
-    cout << endl;
-    cout << endl;
+    if(verbose > 0)
+    {
+        print(F);
+        print(zeta);
+    }
     return true;
 }
 
