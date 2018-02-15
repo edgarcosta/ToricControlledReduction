@@ -42,7 +42,7 @@ using namespace NTL;
 // method = 1, finite diff
 // method = 2, finite diff working over ZZ or ZZ[x] to avoid reductions 
 // method = 3, BSGS not implemented
-#define DEFAULT_VECTOR_REDUCTION_METHOD 0
+#define DEFAULT_VECTOR_REDUCTION_METHOD 1
 
 //see void get_reduction_matrix(Vec< Mat<R> > &M, R &Mden, const Vec<int64_t> &u, const Vec<int64_t> &w, int64_t method = DEFAULT_MATRIX_REDUCTION_METHOD);
 // method = 0, plain, no pre computations involved
