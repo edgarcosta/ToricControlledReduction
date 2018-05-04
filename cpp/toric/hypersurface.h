@@ -182,7 +182,7 @@ int64_t working_precision(const Vec<int64_t> &N, const Vec<int64_t> &r_vector, c
  */
 void charpoly_frob(Vec<ZZ> &cp, const Mat<ZZ> &frob_matrix, const Vec<int64_t> &charpoly_prec, const int64_t &weight, const int64_t &p, const int64_t &a);
 
-#define buffer_length 2048
+#define buffer_length 4096
 bool run_examples(char examples[][3][buffer_length], const int64_t &examples_length, const int64_t &verbose = 0);
 
 #endif
