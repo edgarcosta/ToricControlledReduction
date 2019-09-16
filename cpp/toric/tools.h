@@ -40,6 +40,7 @@ using namespace std;
 
 
 #define print(var) { cout << #var << " = " << (var) << endl;}
+#define print_raw(var) { cout << #var << " = " ; cout <<= (var) ; cout << endl;}
 
 namespace NTL{
 // conversion from ZZX <--> {l}zz_pE
@@ -60,6 +61,21 @@ inline void conv(map< T, R, Compare> &x, const map< T, S, Compare> &y)
 
 using namespace NTL;
 
+template<typename R>
+bool is_zero_modp(const R &a, int64_t n) {
+  return rep(a) % n == 0;
+}
+
+template<>
+inline bool is_zero_modp(const zz_pE &a, int64_t n) {
+  return rep(coeff(rep(a), 0)) % n == 0;
+}
+
+template<>
+inline bool is_zero_modp(const ZZ_pE &a, int64_t n) {
+  return rep(coeff(rep(a), 0)) % n == 0;
+}
+
 
 
 
@@ -67,7 +83,7 @@ using namespace NTL;
 ZZ binomial(int64_t n, int64_t k);
 
 // returns the the vector v = [v0, v1, ..., vn]
-// that represents the polynomial 
+// that represents the polynomial
 // sum vi Y^i = (a + Y b)^n
 void binomial_expansion(Vec<ZZ> &v, const int64_t &a, const int64_t &b, const int64_t &n);
 
@@ -205,7 +221,7 @@ Vec<T> operator*(const Mat<T> &A, const Vec<T> &b)
 {
     assert_print(b.length(), ==, A.NumCols());
     Vec<T> v;
-    mul(v, A, b); 
+    mul(v, A, b);
     return v;
 }
 
@@ -269,7 +285,7 @@ void sub(Mat<T> &res, const Mat<T> &A, const Mat<T> &B)
 template<typename T>
 Mat<T> operator-=(Mat<T> &A, const Mat<T> &B)
 {
-    sub(A, A, B);   
+    sub(A, A, B);
     return A;
 }
 
@@ -306,7 +322,7 @@ NTL_SNS ostream & operator<<(NTL_SNS ostream& s, const  map< Vec<T>, R, Compare>
 
     Mat<T>  monomials;
     Vec<R> coefficients;
-        
+
     monomials.SetDims(a.size(), a.cbegin()->first.length());
     coefficients.SetLength(a.size());
     for(i = 0, it = a.cbegin(); it != a.cend(); ++it, ++i)
@@ -327,7 +343,7 @@ NTL_SNS ostream & operator<<=(NTL_SNS ostream& s, const S& a)
     return s;
 }
 
-//similar to << but more human readable and compatible with SAGE 
+//similar to << but more human readable and compatible with SAGE
 template<typename T>
 NTL_SNS ostream & operator<<=(NTL_SNS ostream& s, const Mat<T>& a)
 {
@@ -343,7 +359,7 @@ NTL_SNS ostream & operator<<=(NTL_SNS ostream& s, const Mat<T>& a)
     return s;
 }
 
-//similar to << but more human readable and compatible with SAGE 
+//similar to << but more human readable and compatible with SAGE
 template<typename T>
 NTL_SNS ostream & operator<<=(NTL_SNS ostream& s, const Vec<T>& a)
 {
@@ -401,7 +417,7 @@ void complement(Vec<int64_t> &res, const int64_t n, const Vec<int64_t> B);
 // st w \in k*P <=>  AP * v + k *bP >= 0 (Half space representation)
 //
 // returns: points and interior_points vectors of length n st
-// points[d] = integral points in d*P 
+// points[d] = integral points in d*P
 // interior_points[d] = integral interior points in d*P
 // we store them as (n + 1) tuples (d, w) where w \in d*P or equivalently w/d \in P
 // d < N
@@ -473,7 +489,7 @@ template <> inline void ring<ZZ_pE>(int64_t &precision, ZZX &fE, ZZ &modulus, co
 
 }
 
-//lifts it to the respective representative class (ZZ or ZZX) and performs the DivRem operation 
+//lifts it to the respective representative class (ZZ or ZZX) and performs the DivRem operation
 template<typename R> void divrem_lift(R &q, R&r, const R &a, const R&b);
 
 //lifts it to ZZ and performs the DivRem operation
