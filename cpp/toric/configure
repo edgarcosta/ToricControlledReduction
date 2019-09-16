@@ -6,6 +6,7 @@
 
 
 PREFIX="" #"/usr/local"
+FLINT_DIR="" # "/usr/local"
 GMP_DIR="" #"/usr/local"
 MPIR_DIR="" #"/usr/local"
 MPFR_DIR="" #"/usr/local"
@@ -26,6 +27,7 @@ GDB=1
 
 # disable unnecessary libs and options
 unset PREFIX
+unset FLINT_DIR
 #GMP_DIR=""
 unset MPIR_DIR
 unset MPFR_DIR
@@ -46,15 +48,19 @@ usage()
     if [ ! -z ${PREFIX+word} ]; then
         echo "     --prefix=<path>      Specify path to installation location (default: $PREFIX"
     fi
-    
+
+    if [ ! -z ${FLINT_DIR+word} ]; then
+      echo "     --with-flint=<path>   Specify location of FLINT (default: $FLINT_DIR)"
+    fi
+
     if [ ! -z ${GMP_DIR+word} ]; then
         echo "     --with-gmp=<path>    Specify location of GMP (default: $GMP_DIR)"
     fi
-    
+
     if [ ! -z ${MPFR_DIR+word} ]; then
         echo "     --with-mpfr=<path>   Specify location of MPFR (default: $MPFR_DIR)"
     fi
-    
+
     if [ ! -z ${MPIR_DIR+word} ]; then
         echo "     --with-mpir=<path>   Specify location of MPIR (default: $MPIR_DIR)"
     fi
@@ -62,19 +68,18 @@ usage()
     if [ ! -z ${NTL_DIR+word} ]; then
         echo "     --with-ntl=<path>    Specify location of NTL (default: $NTL_DIR)"
     fi;
-    
+
     if [ -n "$CC" ]; then
         echo "     CC=<name>            Use the C compiler with the given name (default: $CC)"
         echo "     CFLAGS=<flags>       Pass the extra given flags to the compiler"
     fi
-    
+
     if [ -n "$CXX" ]; then
         echo "     CXX=<name>           Use the C++ compiler with the given name (default: $CXX)"
         echo "     CXXFLAGS=<flags>     Pass the extra given flags to the C++ compiler"
 
     fi;
-    
-    
+
     }
 
 
@@ -99,6 +104,11 @@ while [ "$1" != "" ]; do
         -h|--help)
             usage
             exit 0
+            ;;
+        --with-flint)
+            if [ ! -z ${FLINT_DIR+word} ]; then
+                FLINT_DIR=$(absolute_path "$VALUE")
+            fi
             ;;
         --with-gmp)
             if [ ! -z ${GMP_DIR+word} ]; then
@@ -157,6 +167,26 @@ while [ "$1" != "" ]; do
     shift
 done
 
+if [ -n "${FLINT_DIR}" ]; then
+    if [ -d "${FLINT_DIR}/lib" ]; then
+       FLINT_LIB_DIR="${FLINT_DIR}/lib"
+       FLINT_INC_DIR="${FLINT_DIR}/include"
+    elif [ -d "${FLINT_DIR}/lib64" ]; then
+       FLINT_LIB_DIR="${FLINT_DIR}/lib64"
+       FLINT_INC_DIR="${FLINT_DIR}/include"
+    elif [ -d "${FLINT_DIR}/.libs" ]; then
+       FLINT_LIB_DIR="${FLINT_DIR}/.libs"
+       FLINT_INC_DIR="${FLINT_DIR}"
+    else
+       echo "Invalid FLINT directory"
+       exit 1
+    fi
+    LIB_DIRS="${LIB_DIRS} ${FLINT_LIB_DIR}"
+    INC_DIRS="${INC_DIRS} ${FLINT_INC_DIR}"
+fi;
+if [ ! -z ${FLINT_DIR+word} ]; then
+    LIBS="${LIBS} flint"
+fi;
 
 
 if [ -n "${GMP_DIR}" ]; then
@@ -252,7 +282,7 @@ if [ -n "${NTL_DIR}" ]; then
     INC_DIRS="${INC_DIRS} ${NTL_INC_DIR}"
 fi;
 if [ ! -z ${NTL_DIR+word} ]; then
-    LIBS="${LIBS} ntl"
+    LIBS="${LIBS} ntl pthread"
 fi;
 
 
@@ -294,6 +324,10 @@ if [ "$GDB" = "1" ]; then
     FLAGS="${FLAGS} -g";
 fi
 
+if [ "$ASSERT" = "0" ]; then
+    FLAGS="${FLAGS} -DNDEBUG";
+fi
+
 if [ -z "$CFLAGS" ]; then
     CFLAGS="${FLAGS} -std=c99"
 fi
@@ -301,6 +335,28 @@ if [ -z "$CXXFLAGS" ]; then
     CXXFLAGS="${FLAGS} -std=c++11"
 fi
 
+#PIC flag
+
+if [ -z "$PIC_FLAG" ]; then
+   case "$OS" in
+      CYGWIN* | MINGW*)
+         ;;
+      *)
+         PIC_FLAG="-fPIC";;
+   esac
+fi
+
+
+#extension for executables
+
+if [ -z "$EXEEXT" ]; then
+   case "$OS" in
+      CYGWIN* | MINGW*)
+         EXEEXT=".exe";;
+      *)
+         EXEEXT="";;
+   esac
+fi
 
 
 JOBS=`python -c 'import multiprocessing as mp; print(mp.cpu_count() + 1)'`
