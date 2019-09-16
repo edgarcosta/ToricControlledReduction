@@ -24,7 +24,7 @@ using namespace NTL;
  *  - zeta, the coefficients of the interesting factor of the zeta function of X, i.e., the characteristic polynomial of Frobenius acting on PH^(weight) (X)
  *  - F, a matrix representing a p-adic approximation of the p-power Frobenius acting on PH^(weight) (X)
  *  - hodge_numbers, the hodge numbers  [h_0, h_1,   ...,    h_n], the first h0 columns correspond to PH^(weight, 0)(X), the next h1 to PH^(weight-1, 1)(X), etc
- *  - r_vector, a column corresponding to basis element in PH^(weight - i, i)(X) is correct modulo p^(r_vector[i] + weight - i) 
+ *  - r_vector, a column corresponding to basis element in PH^(weight - i, i)(X) is correct modulo p^(r_vector[i] + weight - i)
  */
 void zeta_and_frob_Fp(Vec<ZZ> &zeta, Mat<ZZ> &F, Vec<int64_t> &hodge_numbers, Vec<int64_t>& r_vector, const int64_t &p, const map< Vec<int64_t>, ZZ, vi64less> &f, const Mat<int64_t> &AP, const Vec<int64_t> &bP, const int64_t &verbose = 1);
 /*
@@ -111,31 +111,31 @@ bool test_Fq(const char *input, const char *output, const int64_t &verbose = 0);
  *      e.g hodge_polygon = [0 0 0 0 1 2 3 4 6 8 .... sum(i*h_{n-i})]
  *   - slope, slope[i] corresponds to slope at the point i, basically which h_{n-i} is making the hodge polygon grow
  *      e.g, slope = [0 0 0 0 1 1 1 1 ..... n-1 n-1 ]
- *      
+ *
  *
  *  PH^(n-1) (X) = H^{n - 1, 0} + H^{n - 2, 1} + ... + H^{0, n - 1}
  *  write dim H^{n - 1 -i, i} = h_i
- *      
+ *
  *                                     !
  *                                    !
- *                               
+ *
  *                                 .
  *                               .
  *                             .
- *                            
- *                         /     
+ *
+ *                         /
  *                       /
  *                     ~
- *                   -      
- *                 -       
+ *                   -
+ *                 -
  *               -
- *             -       
- *           - 
+ *             -
+ *           -
  *         ~
  *   -----
  *  h_{n-1} ~  h_{n-2} ~ h_{n-3}  ... h_0   # hodge numbers
  *     0          1         2       n -1    # slopes
- *  0 ----------- i ----------------- N -->  where N = dim PH^(n-1) (X) 
+ *  0 ----------- i ----------------- N -->  where N = dim PH^(n-1) (X)
  *
  */
 void hodge_polygon(Vec<int64_t> &np, Vec<int64_t> &slope, Vec<int64_t> hodge_numbers);
@@ -143,7 +143,7 @@ void hodge_polygon(Vec<int64_t> &np, Vec<int64_t> &slope, Vec<int64_t> hodge_num
 
 /*
  * Input:
- *  - hodge_numbers, hodge_numbers[i] = dim PH^(weight - i, i)(X) 
+ *  - hodge_numbers, hodge_numbers[i] = dim PH^(weight - i, i)(X)
  *  - weight, weight of motive = dim(X) = n - 1
  *  - p, the characteristic of the field
  *  - a, q = p^a
