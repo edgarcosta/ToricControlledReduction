@@ -155,7 +155,7 @@ void hodge_polygon(Vec<int64_t> &np, Vec<int64_t> &slope, Vec<int64_t> hodge_num
 void relative_precision(Vec<int64_t> &r_vector, Vec<int64_t> &charpoly_prec, const Vec<int64_t> &hodge_numbers, const int64_t &weight, const int64_t &p, const int64_t &a);
 
 /*
- * Input: 
+ * Input:
  *  - r_vector, corresponds to desired number digits above the above the Hodge polygon, where r_vector[i] corresponds to PH^(weight - i, i)(X)
  *  - weight, weight of motive = dim(X) = n - 1
  *  - p, the characteristic of the field
@@ -175,7 +175,7 @@ int64_t working_precision(const Vec<int64_t> &N, const Vec<int64_t> &r_vector, c
  *   - weight, weight of motive = n - 1
  *   - p, the characteristic of the field
  *   - q, q = p^a and Frob is a lift of the qth power
- *  
+ *
  *  Output:
  *   - a list of integers corresponding to the characteristic polynomial of the Frobenius action
  *
