@@ -40,14 +40,14 @@ using namespace NTL;
 //see void reduce_vector(Vec<R> &H, R &D, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t &k, const Vec<R> &G, int64_t method = DEFAULT_VECTOR_REDUCTION_METHOD)
 // method = 0, plain
 // method = 1, finite diff
-// method = 2, finite diff working over ZZ or ZZ[x] to avoid reductions 
+// method = 2, finite diff working over ZZ or ZZ[x] to avoid reductions
 // method = 3, BSGS not implemented
 #define DEFAULT_VECTOR_REDUCTION_METHOD 1
 
 //see void get_reduction_matrix(Vec< Mat<R> > &M, R &Mden, const Vec<int64_t> &u, const Vec<int64_t> &w, int64_t method = DEFAULT_MATRIX_REDUCTION_METHOD);
 // method = 0, plain, no pre computations involved
 // method = 1, poly, if not already computed, first computes the matrix as polynomial in the entries of  multivariable polynomial
-// 
+//
 // Unless, the dimension and the volume of the polytope are small, I highly recommend to precompute the reduction matrices as multivariable polynomials. There might be cases where this precomputation might become a bottle neck.
 #define DEFAULT_MATRIX_REDUCTION_METHOD 1
 
@@ -68,35 +68,35 @@ class dr{
          * P^* = int(P)
          *
          * S (resp S^*), the graded ring associated to P (resp P^*)
-         * S := \sum P_k 
+         * S := \sum P_k
          * S^* := \sum P^* _k
          *
          * P the toric variety associated to P
-         * T (= C^* ^n) the torus in P 
+         * T (= C^* ^n) the torus in P
          * X < P, the closure of V(f) in P
          * Y = X \cap T, hypersurface defined by f in the Torus, i.e, V(f)
-         * 
+         *
          * J(f) = < f, \partial_lambda f : \lambda \in (ZZ^n)^>
          *   = < f, x_i \partial_i f : i = 1, ... n >
          * For simplicity, write F0 = f and , Fi = \partial_i f
          *
          * write J_d = (S / J(f))_d
          * write I_d = (S^* + J(f) / J(f))_d
-         * 
+         *
          * then:
          * H^{n} (T \ Y) = P_1 + J_2 + ... + J_n = n! vol(Delta) + n
          * PH^{n-1} (Y) = J_1 + J_2 + ... + J_n = n! vol(Delta) - 1
-         * PH^{n-1} (X) = P^*_1 + I_2 + ... + I_n 
-         * 
+         * PH^{n-1} (X) = P^*_1 + I_2 + ... + I_n
+         *
          *
          * NOTE Feb 5, 2018: I think it is H^n(P\X) instead of PH^{n-1}(Y)
          */
 
-        /* 
+        /*
          * Attributes and corresponding initializing functions
          */
         // f_frob = sigma(f)
-        map< Vec<int64_t>, R, vi64less> f, f_frob; 
+        map< Vec<int64_t>, R, vi64less> f, f_frob;
         int64_t n;
 
         /*
@@ -116,7 +116,7 @@ class dr{
         int64_t precision;
         ZZX fE; // 1 if p == q else FFq.defining_polynomial()
         ZZ modulus; // p^precision
-       
+
 
         /*
          * Polytope
@@ -136,39 +136,39 @@ class dr{
         /*
          * integral points in the polytope
          *
-         * tuple_list[d] = integral points in d*P 
+         * tuple_list[d] = integral points in d*P
          * tuple_int_list[d] = integral interior points in d*P
          * we store them as (n + 1) tuples (d, w) where w \in d*P or equivalently w/d \in P
          * d \leq n + 1
          */
         Vec< Vec< Vec<int64_t> > > tuple_list;
         Vec< Vec< Vec<int64_t> > > tuple_int_list;
-        
+
         // reverse maps
         Vec< map< Vec<int64_t>, int64_t, vi64less> > tuple_dict;
         Vec< map< Vec<int64_t>, int64_t, vi64less> > tuple_int_dict;
-        
+
         // computes all the above
         void init_tuples();
-        
+
 
         // Powers of f
-        // f_power[i] = f^i 
+        // f_power[i] = f^i
         // we must use append to extend f_power
         Vec< map< Vec<int64_t>, R, vi64less> > f_power, f_frob_power;
         // if needed computes f^N and adds it to the f_power list
         void init_f_power(int64_t N);
         void init_f_frob_power(int64_t N);
 
-    
+
 
         /*
          *
          * solve_matrix[d] represents the map
-         * P_d ---> P_{d-1}^n + J_d 
+         * P_d ---> P_{d-1}^n + J_d
          * g ---> (gi, ci)
          * such that
-         * g = \sum gi * Fi + cokernels 
+         * g = \sum gi * Fi + cokernels
          */
         Vec< Mat<R> > solve_matrix;
         Vec< R > solve_denom;
@@ -179,12 +179,12 @@ class dr{
          * I_d = (S^* + J(f) / J(f))_d
          * PH^{n-1} (Y) = P_1 + J_2 + ... + J_n
          * and
-         * PH^{n-1} (X) = P^*_1 + I_2 + ... + I_n 
+         * PH^{n-1} (X) = P^*_1 + I_2 + ... + I_n
          */
         // coKernels_*_dimensions[i] = \dim *_i
         Vec<int64_t> cokernels_J_dimensions, cokernels_I_dimensions;
         int64_t dim_J, dim_I; //sum(coKernels_*_dimensions)
-        
+
         // cokernels_*_basis[i] = basis for *_i in P_i
         // constructed such that basis for I_i < basis for J_i
         // basis_dr_Y[i] = J_i or P_1 if i == 1
@@ -205,8 +205,8 @@ class dr{
         // computes solve_*, cokernels_J_basis*, basis_dr_*
         // must be called after  init_cokernels_I_basis()
         void init_solve_and_cokernels();
-        
-        
+
+
 
 
 
@@ -248,7 +248,7 @@ class dr{
         void init_last_reduction();
 
 
-        // projection of matrices 
+        // projection of matrices
         // proj_X :  PH^{n-1} (Y) ---> PH^{n-1} (X)
         // proj_notX :  PH^{n-1} (Y) ---> PH^{n-1} (X)^{perp}
         Mat<R> proj_X, proj_notX;
@@ -257,11 +257,11 @@ class dr{
 
 
 
-        
+
         /*
          * Functions
          */
-        
+
         /*
          * Constructors
          */
@@ -311,7 +311,7 @@ class dr{
 
 
         /*
-         * computes M 
+         * computes M
          * by first evaluating RHO at u + T*v
          * and then following the scheme above
          */
@@ -319,7 +319,7 @@ class dr{
 
 
 
-        
+
         /*
          * same as above, but computes the matrix as polynomial in the u coordinates
          * computes a matrix M with coefficients in U0, ..., UN
@@ -332,7 +332,7 @@ class dr{
          * where the matrices computed above are stored
          */
         map< Vec<int64_t>, pair<R, map< Vec<int64_t>, Mat<R>, vi64less> >, vi64less> reduction_poly_dict;
-    
+
         void get_reduction_matrix(Vec< Mat<R> > &M, R &Mden, const Vec<int64_t> &u, const Vec<int64_t> &w, int64_t method = DEFAULT_MATRIX_REDUCTION_METHOD)
         {
             switch(method)
@@ -359,7 +359,7 @@ class dr{
         /*
          * reduction
          *
-         * input: 
+         * input:
          * * u \in P_m, m > 0
          * * v \in P_1
          * * k \in NN
@@ -369,7 +369,7 @@ class dr{
          * * D \in self.R
          * such that
          * D u v^k \sum_i (m + i + k - 1)! ai omega / f^{m + i + k }
-         * = 
+         * =
          * u \sum_i (m + i - 1)! bi omega / f^{m + i}
          */
         void reduce_vector(Vec<R> &H, R &D, const Vec<int64_t> &u, const Vec<int64_t> &v, const int64_t &k, const Vec<R> &G, int64_t method = DEFAULT_VECTOR_REDUCTION_METHOD)
@@ -388,12 +388,12 @@ class dr{
                 }
                 case 2:
                 {
-                    reduce_vector_finitediff_lift(H, D, u, v, k, G); 
+                    reduce_vector_finitediff_lift(H, D, u, v, k, G);
                     break;
                 }
                 default:
                 {
-                    reduce_vector(H, D, u, v, k, G); 
+                    reduce_vector(H, D, u, v, k, G);
                     break;
                 }
             }
@@ -406,18 +406,18 @@ class dr{
 
 
         // in a naive way, only using get_reduction_matrix
-        // computes the coordinates of x^w / f^m in PH^{n-1} (Y) 
+        // computes the coordinates of x^w / f^m in PH^{n-1} (Y)
         // random = if takes a random path or not
         void monomial_to_basis(Vec<R> &res, R &den, const Vec<int64_t> &w, bool random = false);
 
         // computes the approximation of Frob(w \omega / f^m) using N terms in the Frobenius expansion
         // Frob(w \omega / f^m) ~ Frob(w) \sum_{j = 0} ^{N - 1} D_{j, m} Frob(f^j) f^{-p(m + j)}
- 
+
         void frob_monomial(Vec<R> &res, const Vec<int64_t> &w, int64_t N, int64_t method = DEFAULT_VECTOR_REDUCTION_METHOD);
 
         void frob_matrix(Mat<R> &res, Vec<int64_t> N, int64_t method = DEFAULT_VECTOR_REDUCTION_METHOD);
 
-        
+
 
         /*
          * Test functions
@@ -435,18 +435,18 @@ class dr{
          * loops over u \in P_1, and checks if each entry of I_u
          * I_u : J_0 + ... + J_n --> P_1 + P_2 + ... + P_{n+1}
          * corresponds to the inclusion map
-         * J_i --> P_{i+1}, where ai -- >  u * a_i \in P_{i + 1} 
+         * J_i --> P_{i+1}, where ai -- >  u * a_i \in P_{i + 1}
          */
         void test_inclusion_matrices();
         /*
-         * Recall that the last_reduction matrix 
+         * Recall that the last_reduction matrix
          * M: P_1 + .... + P_{n + 1} --- > P_1 + J_2 + ... + J_n
          * wheree  (i - 1)! ai \in P^{i} ---> P_1 + J_2 +... + J_i
          *
          * test_last_reduction()
          * loops over a basis of {u} of PH^{n-1}(Y)
          * and checks if the last_reduction matrix maps
-         * u f^k / f^(\deg u + k) to u 
+         * u f^k / f^(\deg u + k) to u
          * for all k >= 0 such that \deg u + k < n + 1
          */
         void test_last_reduction();
@@ -479,7 +479,7 @@ template<typename R>
 dr<R>::dr(const char* input, const int64_t &verbose, const bool &minimal)
 {
     /*
-     input: 
+     input:
      p
      f.keys()
      f.values()
@@ -584,10 +584,10 @@ void dr<R>::init_tuples()
         fkeys.append(v);
     }
     integral_points(tuple_list, tuple_int_list, AP, bP, fkeys, n + 2);
-    
+
     assert_print(tuple_list[0].length(), ==, 1);
     assert_print(tuple_int_list[0].length(), ==, 0 );
-    
+
     tuple_dict.SetLength(n + 2);
     tuple_int_dict.SetLength(n + 2);
     //changing the length afterwards is troublesome, as maps are not "relocatable"
@@ -597,7 +597,7 @@ void dr<R>::init_tuples()
 
     //returns false if v \in k*P  and w \notin k*P for some k, i.e., min_P(v) < min_P(w)
     auto minPcompare = [=](const Vec<int64_t> &v, const Vec<int64_t> &w){return ::min_P(AP, bP, v) > ::min_P(AP, bP, w);};
- 
+
 
 
     for(i = 0 ; i < n + 2; i++)
@@ -609,7 +609,7 @@ void dr<R>::init_tuples()
         reverse_dict(tuple_dict[i], tuple_list[i]);
         reverse_dict(tuple_int_dict[i], tuple_int_list[i]);
     }
-    
+
     if(verbose > 1)
     {
         Vec<int64_t> dimP, dimPint;
@@ -634,7 +634,7 @@ void init_f_power_core(int64_t N, map< Vec<int64_t>, R, vi64less>  &F, Vec< map<
     {
         // maps are not "reallocatable", this avoids the issue
         Vec< map< Vec<int64_t>, R, vi64less> > Fpow;
-        //copy Fpowers to Fpow 
+        //copy Fpowers to Fpow
         Fpow.SetMaxLength(N + 1);
         Fpow.SetLength(Fpowers.length());
         for(int64_t i = 0; i < Fpowers.length(); i++)
@@ -732,13 +732,13 @@ void dr<R>::init_solve_and_cokernels()
             break;
         }
     }
-        
 
-    dim_J = sum(cokernels_J_dimensions); 
+
+    dim_J = sum(cokernels_J_dimensions);
 
     if( verbose > 1 )
         cout << "dim J_i = "<<cokernels_J_dimensions<<endl;
-    
+
     cokernels_J_basis.SetLength(max_pole + 2);
     cokernels_J_basis_dict.SetLength(max_pole + 2);
     //changing the length afterwards is troublesome, as maps are not "relocatable"
@@ -777,8 +777,8 @@ void dr<R>::init_solve_and_cokernels()
         }
         if( i > 0 )
             assert( solve_matrix[i].NumRows() == (n + 1)*tuple_list[i-1].length() + B.length() );
-        
-        
+
+
         // copy local data to object data
         cokernels_J_basis[i].SetLength(B.length());
         for(j = 0; j < B.length(); j++)
@@ -786,12 +786,12 @@ void dr<R>::init_solve_and_cokernels()
 
         reverse_dict(cokernels_J_basis_dict[i], cokernels_J_basis[i]);
     }
-    
+
     // PH^{n-1} (Y) = P_1 + J_2 + ... + J_{max_pole}, generally max_pole = n
     // PH^{n-1} (X) = P^*_1 + I_2 + ... + I_{max_pole}
     basis_dr_Y.SetLength(max_pole + 1);
     basis_dr_Y_dict.SetLength(max_pole + 1);
-    
+
 
     basis_dr_X.SetLength(max_pole + 1);
     basis_dr_X_dict.SetLength(max_pole + 1);
@@ -810,8 +810,8 @@ void dr<R>::init_solve_and_cokernels()
     basis_dr_X[1] = tuple_int_list[1];
     basis_dr_X_dict[1] = tuple_int_dict[1];
     dim_dr_X =  tuple_int_list[1].length();
-    
-    
+
+
     for(i = 2; i < max_pole + 1; i++)
     {
         basis_dr_Y[i] = cokernels_J_basis[i];
@@ -922,7 +922,7 @@ void dr<R>::matrix_J(Mat<R> &result, int64_t d)
         cout<<"dr:::matrix_J(-, "<<d<<")"<<endl;
 
 
-    //free storage and make 0 x 0 
+    //free storage and make 0 x 0
     result.kill();
     assert( d >= 0 );
     if(d == 0)
@@ -931,7 +931,7 @@ void dr<R>::matrix_J(Mat<R> &result, int64_t d)
         return;
     }
     result.SetDims( tuple_list[d].length(), (n + 1) * tuple_list[d - 1].length());
-    
+
     typename map< Vec<int64_t>, R, vi64less>::const_iterator fit;
     for(int64_t j = 0; j <  tuple_list[d - 1].length(); j++)
     {
@@ -990,7 +990,7 @@ inline void dr<ZZ>::cokernel_intersection(Vec<int64_t>  &res, Mat<ZZ> &T, Mat<ZZ
 
 
 /*
- * rho_i,w : P_d -> P_{d-1} 
+ * rho_i,w : P_d -> P_{d-1}
  * pi_i : P_d --> J_d
  * m w g \omega/f^{m + 1} = w \rho_{d, w} (g) \omega/f^m + m w \pi_i(g) \omega/f^{m+1} in PH^{n-1}(Y)
  * w \in P_m and m > 0
@@ -1017,7 +1017,7 @@ void dr<R>::init_rho_and_pi_matrices()
     pi[0].SetDims(1, 1);
     pi[0][0][0] = 1;
     pi_den[0] = 1;
-    
+
 
     for(d = 1; d < max_pole + 2; d++)
     {
@@ -1059,16 +1059,16 @@ void dr<R>::init_rho_and_pi_matrices()
             // deal with cokernels
             for(i = 0; i < cokernels_J_basis[d].length(); i++)
                 PI[i][j] = Ucols[j][ (n + 1) * len_Htuples + i ];
-        
+
             /*
-             * no need to do anything special while dealing with the term:        
+             * no need to do anything special while dealing with the term:
              * w  H0  f
              *
-             * one one hand: 
+             * one one hand:
              *      m w H0 * f \omega/ f^{m + 1} = m w H0 \omega/f^{m}
-             * On the other hand 
+             * On the other hand
              *      w H0 f \omega/ f^{m + 1} = w H0 (\partial_0 f) \omega/ f^{m + 1}
-             * where \partial_0 =  \deg 
+             * where \partial_0 =  \deg
              * and
              *      \partial_0 (w H0) = (w0 + d - 1) w H0, where w0 + d = m + 1
              */
@@ -1077,7 +1077,7 @@ void dr<R>::init_rho_and_pi_matrices()
             {
                 /*
                  * dealing with the term
-                 * w Hi * \partial_i f 
+                 * w Hi * \partial_i f
                  *  --> \partial_i (w Hi)
                  * = w ( wi Hi + \partial_i Hi)
                  */
@@ -1104,7 +1104,7 @@ void dr<R>::init_inclusion_matrices()
 
     // for u in P1 the matrix representing
     // I_u : J_0 + ... + J_n --> P_1 + P_2 + ... + P_{n+1}
-    // where J_i --> P_{i+1} corresponds to 
+    // where J_i --> P_{i+1} corresponds to
     //       ai -- >  u * a_i \in P_{i + 1}
 
     inclusion_matrices.SetLength(tuple_list[1].length());
@@ -1121,7 +1121,7 @@ void dr<R>::init_inclusion_matrices()
         shift_rows[k] = total_rows;
         total_columns += cokernels_J_dimensions[k];
         total_rows += tuple_list[k + 1].length();
-    } 
+    }
 
     for(int64_t i = 0; i < tuple_list[1].length(); i++)
     {
@@ -1131,7 +1131,7 @@ void dr<R>::init_inclusion_matrices()
         Vec<int64_t> &u = tuple_list[1][i];
         for(int64_t k = 0; k < max_pole + 1; k++)
         {
-            
+
             for(int64_t j=0; j < cokernels_J_dimensions[k]; j++)
                 M[shift_rows[k] + tuple_dict[k + 1][ u + cokernels_J_basis[k][j] ]][shift_columns[k] + j] = 1;
         }
@@ -1150,7 +1150,7 @@ void dr<R>::test_inclusion_matrices()
      * loops over u \in P_1, and checks if each entry of I_u
      * I_u : J_0 + ... + J_n --> P_1 + P_2 + ... + P_{n+1}
      * corresponds to the inclusion map
-     * J_i --> P_{i+1}, where ai -- >  u * a_i \in P_{i + 1} 
+     * J_i --> P_{i+1}, where ai -- >  u * a_i \in P_{i + 1}
      */
 
     int64_t i, j, k;
@@ -1221,11 +1221,11 @@ void dr<R>::init_last_reduction()
     D = 1;
     for(k = 2; k < max_pole + 2; k++)
         D *= pi_den[k];
-    
+
     //P_1 --> P_1 is the identity map
     for(k = 0; k < tuple_list[1].length(); k++)
         M[k][k] = D;
-    
+
 
     int64_t factorial = 1;
     for(k = 2; k < max_pole + 2; k++)
@@ -1244,7 +1244,7 @@ void dr<R>::init_last_reduction()
             // using rho_k,0 ( ej ) \in P_{k - 1}
             // rho[k][0].column(j).list() \in P_{k-1}
             Vec<R> G, H;
-            // G = [0]*dim(P_1 + ... + P_{k-2}) +  rho[k][0].column(j) + [0]*dim(P_k + ... P_{n+1} 
+            // G = [0]*dim(P_1 + ... + P_{k-2}) +  rho[k][0].column(j) + [0]*dim(P_k + ... P_{n+1}
             G.SetLength(total_columns, R(0));
             for(i = 0; i < rho[k][0].NumRows(); i++)
                 G[i + shift_columns[k - 1]] = rho[k][0][i][j];
@@ -1269,19 +1269,19 @@ void dr<R>::test_last_reduction()
         cout << "dr::test_last_reduction()" << endl;
 
     /*
-     * Recall that the last_reduction matrix 
+     * Recall that the last_reduction matrix
      * M: P_1 + .... + P_{n + 1} --- > P_1 + J_2 + ... + J_n
      * wheree  (i - 1)! ai \in P^{i} ---> P_1 + J_2 +... + J_i
      *
      * test_last_reduction()
      * loops over a basis of {u} of PH^{n-1}(Y)
      * and checks if the last_reduction matrix maps
-     * u f^k / f^(\deg u + k) to u 
+     * u f^k / f^(\deg u + k) to u
      * for all k >= 0 such that \deg u + k < n + 1
      */
     Vec< Vec<int64_t> > B;
     int64_t i, j, k, shift;
-    
+
     for(i = 0; i < basis_dr_Y.length(); i++)
         B.append( basis_dr_Y[i] );
 
@@ -1398,7 +1398,7 @@ void dr<R>::get_reduction_matrix_plain(Vec< Mat<R> > &M, R &Mden, const Vec<int6
     {
         shift[k] = shift[k-1] + cokernels_J_basis[k-1].length();
     }
-    
+
     /*
      * let alpha be a basis element in J_k
      * M(alpha) = (c_0, c_1, c_2, ..., c_k, 0, ...)
@@ -1490,14 +1490,14 @@ void dr<R>::compute_reduction_matrix_poly(const Vec<int64_t> &v)
     assert_print(v[0], ==, 1);
 
     int64_t i, j, k, l , z;
-    
-    
+
+
     map< Vec<int64_t>, Mat<R>, vi64less> &M = reduction_poly_dict[v].second;
     R &Mden = reduction_poly_dict[v].first;
     Mden = R(1);
-    
-    
-    
+
+
+
     Vec<int64_t> shift; //shift[k] = sum(map(len, cokernels_J_basis[:k]))
     shift.SetLength(max_pole + 2, int64_t(0));
     for(k = 1; k < max_pole + 2; k++)
@@ -1510,7 +1510,7 @@ void dr<R>::compute_reduction_matrix_poly(const Vec<int64_t> &v)
     Vec<int64_t> zero;
     zero.SetLength(n + 1, 0);
 
-    
+
     // let alpha be a basis element in J_k
     // M(alpha) = (c_0, c_1, c_2, ..., c_k, 0, ...)
     // where
@@ -1533,7 +1533,7 @@ void dr<R>::compute_reduction_matrix_poly(const Vec<int64_t> &v)
             {
                 //deg of monomial is k + 1 - i, as expected
                 assert_print( (hi.begin()->first)[0], <= , k + 1 - i);
-                
+
                 // copy pi_i(hi) to the matrix
                 typename map< Vec<int64_t>, Vec<R>, vi64less>::const_iterator cit;
                 for(cit = hi.begin(); cit != hi.end(); cit++)
@@ -1554,7 +1554,7 @@ void dr<R>::compute_reduction_matrix_poly(const Vec<int64_t> &v)
                     {
                         Mw[shift[i] + l][b_coordinate] += ciw[l];
                     }
-                }   
+                }
                 if(i > 0)
                 {
                     //h_{i -1} = \rho_{i} (hi) \in P_{i-1}
@@ -1629,20 +1629,20 @@ void dr<R>::get_reduction_matrix_poly(Vec< Mat<R> > &M, R &Mden, const Vec<int64
     const map< Vec<int64_t>, Mat<R>, vi64less> &Mdict = (it->second).second;
 
     int64_t i;
-    
+
     // initialize M
-    // release space and set to length 0    
+    // release space and set to length 0
     M.kill();
     M.SetLength(max_pole + 2);
     for(i = 0; i < max_pole + 2; i++)
         M[i].SetDims(dim_J, dim_J);
-    
+
     typename map< Vec<int64_t>, Mat<R>, vi64less>::const_iterator itM;
     ZZX monomial_evaluated;
     Vec<ZZ> monomial;
     for(itM = Mdict.begin(); itM != Mdict.end(); itM++)
     {
-        // itM->first = alpha = (alpha0, alpha1,..., alpha_n) representing U^alpha 
+        // itM->first = alpha = (alpha0, alpha1,..., alpha_n) representing U^alpha
         // we want to compute (u + Y*v)^alpha
         const Vec<int64_t> &alpha = itM->first;
         //monomial_evaluated = ZZX(1);
@@ -1673,7 +1673,7 @@ void dr<R>::get_reduction_matrix_poly(Vec< Mat<R> > &M, R &Mden, const Vec<int64
 }
 
 
-    template<typename R>
+template<typename R>
 void dr<R>::test_reduction_matrices(const int64_t &k)
 {
     int64_t i, j, l;
@@ -1729,7 +1729,7 @@ void dr<R>::reduce_vector_plain(Vec<R> &H, R &D, const Vec<int64_t> &u, const Ve
     user_time = get_cpu_time();
     get_timestamp(&wtime1);
 
-    int64_t dim_low = dim_J - cokernels_J_dimensions[n]; // sum(self.coKernels_J_dimensions[:self.n]) 
+    int64_t dim_low = dim_J - cokernels_J_dimensions[n]; // sum(self.coKernels_J_dimensions[:self.n])
     Vec< Mat<R> > M;
     R Mden;
     get_reduction_matrix(M, Mden, u, v);
@@ -1840,8 +1840,8 @@ void dr<R>::monomial_to_basis(Vec<R> &G, R &D, const Vec<int64_t> &w, bool rando
     // w \in P_m
     m = w[0];
     u = w;
-    
-    G.kill(); 
+
+    G.kill();
     G.SetLength(dim_J, R(0));
     G[0] = 1;
     D = 1;
@@ -1897,7 +1897,7 @@ void dr<R>::test_monomial_to_basis(int64_t N, bool random)
 
     Vec< Vec<int64_t> > B;
     int64_t i, k;
-    
+
     for(i = 0; i < basis_dr_Y.length(); i++)
         B.append( basis_dr_Y[i] );
 
@@ -1906,7 +1906,7 @@ void dr<R>::test_monomial_to_basis(int64_t N, bool random)
     {
         if(verbose > 2)
             cout << "testing if  v f^"<<k<<" == v"<<endl;
-    
+
         for(i = 0; i < B.length(); i++)
         {
             Vec<int64_t> &v = B[i];
@@ -1970,7 +1970,7 @@ void dr<R>::frob_matrix(Mat<R> &res, Vec<int64_t> N, int64_t method)
     }
     F = transpose(F);
     res = proj_X * F;
-    
+
     Mat<R> zero;
     zero.SetDims( dim_dr_Y, dim_dr_X);
     assert_print(zero, ==, proj_notX * F);
@@ -2100,7 +2100,7 @@ void dr<R>::frob_monomial(Vec<R> &F, const Vec<int64_t> &w, int64_t N, int64_t m
         }
         //end of loop in H
         H.swap(Hnew);
-        
+
     }
     //end of loop in e
 
@@ -2115,7 +2115,7 @@ void dr<R>::frob_monomial(Vec<R> &F, const Vec<int64_t> &w, int64_t N, int64_t m
     for(Hit = H.cbegin(); Hit != H.cend(); Hit++)
         F += last_reduction * (inclusion_matrices[ tuple_dict[1][Hit->first] ] * Hit->second);
 
-    // F *= p^{n - 1}/ factorial(p * (m + N - 1) - 1) 
+    // F *= p^{n - 1}/ factorial(p * (m + N - 1) - 1)
     R fact_padic;
     int64_t val;
     factorial_padic(fact_padic, val, p * (m + N - 1) - 1, p);
