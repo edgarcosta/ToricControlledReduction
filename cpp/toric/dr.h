@@ -515,8 +515,7 @@ void dr<R>::init(const int64_t &p, const map< Vec<int64_t>, R, vi64less> &f, con
     Vec<int64_t> v;
     v.SetLength(n + 1);
     v[0] = 1;
-    for(fit = f.begin(); fit != f.end(); fit++)
-    {
+    for(fit = f.begin(); fit != f.end(); fit++) {
         for(int64_t i = 0; i < n; i++)
             v[i + 1] = fit->first[i];
         this->f[v] = fit->second;
