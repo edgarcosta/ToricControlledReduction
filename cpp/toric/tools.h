@@ -9,6 +9,9 @@
 #include <cmath> //ceil
 #include <map>
 #include <iostream>
+#include <string>
+#include <sstream>
+#include <vector>
 
 #include "vec_int64.h" //extends Vec<int64_t>
 
@@ -21,6 +24,7 @@
 #include <NTL/lzz_pX.h>
 #include <NTL/ZZ_pX.h>
 #include <NTL/tools.h>
+using namespace std::literals;
 using namespace std;
 
 
@@ -41,6 +45,22 @@ using namespace std;
 
 #define print(var) { cout << #var << " = " << (var) << endl;}
 #define print_raw(var) { cout << #var << " = " ; cout <<= (var) ; cout << endl;}
+
+class my_exception : public runtime_error {
+    string msg;
+public:
+    my_exception(const string &arg, const char *file, int line) :
+    std::runtime_error(arg) {
+        std::ostringstream o;
+        o << file << ":" << line << ": " << arg;
+        msg = o.str();
+    }
+    ~my_exception() throw() {}
+    const char *what() const throw() {
+        return msg.c_str();
+    }
+};
+#define throw_line(arg) throw my_exception(arg, __FILE__, __LINE__);
 
 namespace NTL{
 // conversion from ZZX <--> {l}zz_pE
@@ -343,21 +363,7 @@ NTL_SNS ostream & operator<<=(NTL_SNS ostream& s, const S& a)
     return s;
 }
 
-//similar to << but more human readable and compatible with SAGE
-template<typename T>
-NTL_SNS ostream & operator<<=(NTL_SNS ostream& s, const Mat<T>& a)
-{
-    int64_t i, n;
-    n = a.NumRows();
-    s <<"[";
-    for(i = 0; i < n; ++i)
-    {
-        s <<= a[i];
-        if(i<n-1) s<<",\n";
-    }
-    s << "]";
-    return s;
-}
+
 
 //similar to << but more human readable and compatible with SAGE
 template<typename T>
@@ -372,6 +378,22 @@ NTL_SNS ostream & operator<<=(NTL_SNS ostream& s, const Vec<T>& a)
         if(i<n-1) s<<", ";
     }
     s << ")";
+    return s;
+}
+
+//similar to << but more human readable and compatible with SAGE
+template<typename T>
+NTL_SNS ostream & operator<<=(NTL_SNS ostream& s, const Mat<T>& a)
+{
+    int64_t i, n;
+    n = a.NumRows();
+    s <<"[";
+    for(i = 0; i < n; ++i)
+    {
+        s <<= a[i];
+        if(i<n-1) s<<",\n";
+    }
+    s << "]";
     return s;
 }
 
@@ -397,6 +419,71 @@ NTL_SNS ostream & operator<<=(NTL_SNS ostream& s, const map< Vec<T>, R, Compare>
     }
     s << "}";
     return s;
+}
+
+// reads [a, b, c, ..]
+template<class T>
+istream & operator>>(istream& s, vector<T>& output) {
+  vector<T> ibuf(0);
+  long c;
+  if (!s)
+    throw_line("bad vector input"s);
+
+  c = s.peek();
+  while (iswspace(c)) {
+    s.get();
+    c = s.peek();
+  }
+  if (c != '[')
+    throw_line("bad vector input"s);
+
+  s.get();
+  c = s.peek();
+  while (iswspace(c)) {
+    s.get();
+    c = s.peek();
+  }
+  while (c != ']' and c != EOF) {
+    T tmp;
+    if (!(s >> tmp))
+      throw_line("bad vector input"s);
+    ibuf.push_back(tmp);
+    c = s.peek();
+    while (iswspace(c) or c == ',') {
+      s.get();
+      c = s.peek();
+    }
+  }
+
+  if (c == EOF)
+    throw_line("bad vector input"s);
+  s.get();
+  output = ibuf;
+  return s;
+}
+
+// reads [a, b, c, ..] into an NTL vector
+template<class T>
+istream & operator>>=(istream& s, Vec<T>& output) {
+  vector<T> buf;
+  s >> buf;
+  output.SetLength(buf.size());
+  for(size_t i = 0; i < buf.size(); ++i)
+    output[i] = buf[i];
+  return s;
+}
+// reads [[a, b, c, ..] into an NTL vector
+template<class T>
+istream & operator>>=(istream& s, Mat<T>& output) {
+  vector< vector<T> > buf;
+  s >> buf;
+  size_t nrows = buf.size();
+  size_t ncols = (nrows > 0)? buf[0].size() : 0;
+  output.SetDims(nrows, ncols);
+  for(size_t i = 0; i < nrows; ++i)
+    for(size_t j = 0; j < ncols; ++j)
+      output[i][j] = buf[i][j];
+  return s;
 }
 
 

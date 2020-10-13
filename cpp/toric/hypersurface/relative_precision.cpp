@@ -5,7 +5,7 @@
 #include <cmath> // ceil, log
 /*
  * Input:
- *  - hodge_numbers, hodge_numbers[i] = dim PH^(weight - i, i)(X) 
+ *  - hodge_numbers, hodge_numbers[i] = dim PH^(weight - i, i)(X)
  *  - weight, weight of motive = dim(X) = n - 1
  *  - p, the characteristic of the field
  *  - a, q = p^a
@@ -21,7 +21,7 @@ void relative_precision(Vec<int64_t> &r_vector, Vec<int64_t> &charpoly_prec, con
     Vec<int64_t> HP, slope;
     hodge_polygon(HP, slope, hodge_numbers);
     charpoly_prec.kill();
-    charpoly_prec.SetLength(HP.length(),int64_t(0));
+    charpoly_prec.SetLength(HP.length(), int64_t(0));
     int64_t Pdeg, max_digits, i, j;
     Pdeg = HP.length() - 1;
     max_digits = 0;

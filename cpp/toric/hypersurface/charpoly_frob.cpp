@@ -14,7 +14,7 @@ void charpoly_frob(Vec<ZZ> &cp, const Mat<ZZ> &frob_matrix, const Vec<int64_t> &
 
     int64_t sign, degree;
     degree = cp.length() - 1;
-    int64_t halfdegree = ceil(degree*0.5) + 1;
+    int64_t halfdegree = floor(degree*0.5) + 1;
     sign = 0;
     Vec<ZZ> mod;
     mod.SetLength( charpoly_prec.length() );
@@ -32,7 +32,7 @@ void charpoly_frob(Vec<ZZ> &cp, const Mat<ZZ> &frob_matrix, const Vec<int64_t> &
         sign = 1;
     else
     {
-        for(i = 0; i < degree + 1; i++)
+        for(i = 0; i < floor(0.5*(degree + 1)); i++)
         {
             ZZ p_power = power_ZZ(p, min(charpoly_prec[i], charpoly_prec[degree - i] + a * (degree - 2 * i) * (weight /2) ));
             if( cp[i] % p_power != 0 and cp[degree-i] % p_power != 0 ) {
@@ -70,24 +70,24 @@ void charpoly_frob(Vec<ZZ> &cp, const Mat<ZZ> &frob_matrix, const Vec<int64_t> &
         * assume that s[i] and e[i] are correct for i < k
         * e[k] correct modulo mod[degree - k]
         * S = - sum (-1)^i e[k-i] * s[i] = sum (-1)^(i+1) e[k-i] * s[i]
-        * s[k] = (-1)^k (S - k*e[k] ) 
-        * ==> k*e[k] = (-1)^(k+1) s[k] + S 
+        * s[k] = (-1)^k (S - k*e[k] )
+        * ==> k*e[k] = (-1)^(k+1) s[k] + S
         */
         sum = 0;
         for(i = 1; i < k ; i++)
             sum += ((i%2 == 1)? 1 : -1) * e[k-i] * s[i];
         s[k] = ( (k%2 == 0)? 1 : -1 ) * (sum - k * e[k]);
-        //hence s[k] is correct modulo k*mod[degree - k] 
+        //hence s[k] is correct modulo k*mod[degree - k]
         pN = k * mod[degree - k];
         s[k] = s[k] % pN;
         // |x_i| = p^(w*0.5)
         // => s[k] <= degree*p^(a*w*k*0.5)
-        // recall, 2*degree*p^(a*w*k*0.5) /k < mod[degree - k] 
+        // recall, 2*degree*p^(a*w*k*0.5) /k < mod[degree - k]
         if( sqr(s[k]) > degree * degree * power_ZZ(p, a * weight * k) )
             s[k] = - ( (-s[k]) % pN );
 
         //now correct e[k] with:
-        // (-1)^(k+1) s[k] + S = k*e[k] 
+        // (-1)^(k+1) s[k] + S = k*e[k]
         sum = sum + ( (k%2 == 0)? -s[k] : s[k] );
         int64_t rem = DivRem(e[k], sum , k);
         assert_print(rem, ==, 0);
