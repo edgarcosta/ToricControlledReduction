@@ -321,18 +321,23 @@ fi
 #defaults for CFLAGS
 FLAGS="-pedantic -Wall -Wextra -O2 -funroll-loops"
 if [ "$GDB" = "1" ]; then
-    FLAGS="${FLAGS} -g";
+    FLAGS="${FLAGS} -g"
 fi
 
 if [ "$ASSERT" = "0" ]; then
-    FLAGS="${FLAGS} -DNDEBUG";
+    FLAGS="${FLAGS} -DNDEBUG"
 fi
-
 if [ -z "$CFLAGS" ]; then
     CFLAGS="${FLAGS} -std=c99"
 fi
+if [ '$(${CC} --version  2>&1 | grep -q -c "Apple clang")' ]; then
+    CFLAGS="${CFLAGS} --system-header-prefix=/usr/local/include"
+fi
 if [ -z "$CXXFLAGS" ]; then
     CXXFLAGS="${FLAGS} -std=c++14"
+fi
+if [ '$(${CXX} --version  2>&1 | grep -q -c "Apple clang")' ]; then
+    CXXFLAGS="${CXXFLAGS} --system-header-prefix=/usr/local/include"
 fi
 
 #PIC flag
