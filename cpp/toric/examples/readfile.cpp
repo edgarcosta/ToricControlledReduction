@@ -50,24 +50,24 @@ istream& operator>>(istream &is,  hypersurface &o) {
   for(size_t i = 0; i < 6; ++i) {
     string s;
     if(not getline(is, s, ':'))
-      throw_line("missing field"s);
+      throw_line("missing field");
     stringstream ss(s);
 
     switch(i) {
       case 0:
         {
           if(!(ss >> o.label))
-            throw_line("bad label"s);
+            throw_line("bad label");
           break;
         }
       case 1:
         if(!(ss >>= o.monomials))
-          throw_line("bad monomials"s);
+          throw_line("bad monomials");
         break;
       case 2:
         {
           if(!(ss >>= o.coefficients))
-            throw_line("bad coefficients"s);
+            throw_line("bad coefficients");
           assert_print(o.monomials.NumRows(), ==, o.coefficients.length());
           for(long i = 0; i < o.coefficients.length(); ++i)
             o.f[o.monomials[i]] = o.coefficients[i];
@@ -75,18 +75,18 @@ istream& operator>>(istream &is,  hypersurface &o) {
         }
       case 3:
         if(!(ss >>= o.A))
-          throw_line("bad A"s);
+          throw_line("bad A");
         break;
       case 4:
         if(!(ss >>= o.b))
-          throw_line("bad b"s);
+          throw_line("bad b");
         break;
       case 5:
         if(!(ss >> o.p))
-          throw_line("bad prime"s);
+          throw_line("bad prime");
         break;
       default:
-        throw_line("too many fields in the line!"s);
+        throw_line("too many fields in the line!");
     }
   }
   return is;

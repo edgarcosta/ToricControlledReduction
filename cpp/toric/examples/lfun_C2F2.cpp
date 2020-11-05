@@ -44,7 +44,7 @@ int main(int argc, char* argv[])
     PrimeSeq s;
     s.reset(9);
     int64_t p = s.next(); //11
-    printf("C2F2_%lld_%lld = \n", psi_num, psi_den);
+    printf("C2F2_%lld_%lld = \n", (long long int)psi_num, (long long int)psi_den);
     while (p <= bound) {
         // check for Tame ramification 
         int64_t C = (746496 % p); // 2^10 * 3^6;

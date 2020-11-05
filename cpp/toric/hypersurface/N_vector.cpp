@@ -10,7 +10,7 @@ void N_vector(Vec<int64_t> &N, const Vec<int64_t> &r_vector, const int64_t &weig
         cerr <<"p is too small, only implemented for p >= 2*(weight + 1) + r"<<endl;
         print(p);
         print(2*(weight + 1) + max(r_vector));
-        throw_line("p is too small"s);
+        throw_line("p is too small");
     }
     else
     {

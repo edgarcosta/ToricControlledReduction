@@ -772,7 +772,7 @@ void dr<R>::init_solve_and_cokernels()
         {
             cout<<"Something went wrong, perhaps the hypersurface is not nondegenerate..."<<endl;
             printf("At degree %ld expected B.length() = %ld, got %ld", (long) i,  (long) cokernels_J_dimensions[i], (long) B.length());
-            throw_line("hypersurface is not nondegenerate"s);
+            throw_line("hypersurface is not nondegenerate");
         }
         if( i > 0 )
             assert( solve_matrix[i].NumRows() == (n + 1)*tuple_list[i-1].length() + B.length() );
@@ -863,7 +863,7 @@ void dr<R>::init_cokernels_I_basis()
                 print(hodge_numbers[d - 1]);
                 print(n - 1 - (d-1));
                 print(hodge_numbers[(n - 1) - (d -1)]);
-                throw_line("hypersurface is not nondegenerate"s);
+                throw_line("hypersurface is not nondegenerate");
             }
         }
     }
@@ -1978,7 +1978,7 @@ void dr<R>::frob_matrix(Mat<R> &res, Vec<int64_t> N, int64_t method)
       cout<<"Something went wrong, perhaps the hypersurface is not nondegenerate..."<<endl;
       print(hodge_numbers);
       print(proj_notX * F);
-      throw_line("hypersurface is not nondegenerate"s);
+      throw_line("hypersurface is not nondegenerate");
     }
     assert_print(zero, ==, proj_notX * F);
     if(verbose > 0)

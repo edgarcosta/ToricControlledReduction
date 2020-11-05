@@ -24,7 +24,6 @@
 #include <NTL/lzz_pX.h>
 #include <NTL/ZZ_pX.h>
 #include <NTL/tools.h>
-using namespace std::literals;
 using namespace std;
 
 
@@ -427,7 +426,7 @@ istream & operator>>(istream& s, vector<T>& output) {
   vector<T> ibuf(0);
   long c;
   if (!s)
-    throw_line("bad vector input"s);
+    throw_line("bad vector input");
 
   c = s.peek();
   while (iswspace(c)) {
@@ -435,7 +434,7 @@ istream & operator>>(istream& s, vector<T>& output) {
     c = s.peek();
   }
   if (c != '[')
-    throw_line("bad vector input"s);
+    throw_line("bad vector input");
 
   s.get();
   c = s.peek();
@@ -446,7 +445,7 @@ istream & operator>>(istream& s, vector<T>& output) {
   while (c != ']' and c != EOF) {
     T tmp;
     if (!(s >> tmp))
-      throw_line("bad vector input"s);
+      throw_line("bad vector input");
     ibuf.push_back(tmp);
     c = s.peek();
     while (iswspace(c) or c == ',') {
@@ -456,7 +455,7 @@ istream & operator>>(istream& s, vector<T>& output) {
   }
 
   if (c == EOF)
-    throw_line("bad vector input"s);
+    throw_line("bad vector input");
   s.get();
   output = ibuf;
   return s;
