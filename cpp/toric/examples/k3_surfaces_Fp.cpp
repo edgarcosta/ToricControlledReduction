@@ -6,8 +6,14 @@
 
 int main()
 {
-    int examples_length = 17;
-    char examples[17][3][buffer_length] = {
+    int examples_length = 18;
+    char examples[18][3][buffer_length] = {
+        // f = x^4 + y^4 + z^4 + x*y*z + 1
+        {
+            "dwork K3 surface p = 11",
+            "11 \n[ [ 1  0  0][ 4 -1 -1][ 0  1  0][ 0  0  0][ 0  0  1] ]\n[1 1 1 1 1] \n[ [ 1  0  0][ 1  4  0][-3 -4 -4][ 1  0  4] ] \n[0 0 4 0] \n",
+            "[-1331 -77 7 1]"
+        },
         // f = x^4 + y^4 + z^4 + x*y*z + 1
         {
             "dwork K3 surface p = 107",

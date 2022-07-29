@@ -13,7 +13,7 @@ endef
 export
 
 HEADERS = $(patsubst %, %.h, $(SOURCE_DIRS))
-SOURCES = $(wildcard $(patsubst %, %/*.cpp, $(SOURCE_DIRS)))  
+SOURCES = $(wildcard $(patsubst %, %/*.cpp, $(SOURCE_DIRS)))
 OBJS = $(patsubst %.cpp, build/%.o, $(SOURCES))
 
 
@@ -36,13 +36,13 @@ test: $(TESTS)
 build/%.o: %.cpp $(HEADERS) | build_dirs
 	$(CXX) $(CXXFLAGS) $(INCS) -c $< -o $@;
 
-$(TESTS) : %.exe : %.o $(OBJS) 
+$(TESTS) : %.exe : %.o $(OBJS)
 	$(CXX) $(CXXFLAGS) $(INCS) $^ -o $@ $(LIBS)
 
-build/%.valgrind : %.cpp $(SOURCES) 
+build/%.valgrind : %.cpp $(SOURCES)
 	$(CXX) $(CXXFLAGS) $(INCS) $^ -o $@ $(LIBS)
 
-$(EXAMPLES) : %.exe : %.o $(OBJS) 
+$(EXAMPLES) : %.exe : %.o $(OBJS)
 	$(CXX) $(CXXFLAGS) $(INCS) $^ -o $@ $(LIBS)
 
 build_dirs: $(BUILD_DIRS)
@@ -55,4 +55,4 @@ $(BUILD_DIRS): % :
 print-%:
 	@echo '$*=$($*)'
 
-.PHONY: clean 
+.PHONY: clean

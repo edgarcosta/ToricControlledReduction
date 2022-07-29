@@ -6,7 +6,6 @@
 
 #include <cstdint>
 #include <assert.h>
-#include <cmath> //ceil
 #include <map>
 #include <iostream>
 #include <string>
