@@ -753,7 +753,7 @@ void dr<R>::init_solve_and_cokernels()
         Mat<R> J;
         matrix_J(J, i);
         if( verbose > 1)
-            printf("Solving Jacobian relations at degree %ld (%ld x %ld)\n", (long)i, (long)J.NumRows(), (long)J.NumCols());
+            printf("dr::Solving Jacobian relations at degree %ld (%ld x %ld)\n", (long)i, (long)J.NumRows(), (long)J.NumCols());
 
         Vec<int64_t> B, initB;
         if( i <= max_pole )
@@ -770,9 +770,9 @@ void dr<R>::init_solve_and_cokernels()
         solve_system(B, solve_matrix[i], solve_denom[i], J, initB);
         if(B.length() != cokernels_J_dimensions[i])
         {
-            cout<<"Something went wrong, perhaps the hypersurface is not nondegenerate..."<<endl;
-            printf("At degree %ld expected B.length() = %ld, got %ld", (long) i,  (long) cokernels_J_dimensions[i], (long) B.length());
-            throw_line("hypersurface is not nondegenerate");
+            cout<<"dr::Something went wrong, perhaps the hypersurface is not nondegenerate..."<<endl;
+            printf("dr::At degree %ld expected B.length() = %ld, got %ld", (long) i,  (long) cokernels_J_dimensions[i], (long) B.length());
+            throw_line("dr::hypersurface is not nondegenerate");
         }
         if( i > 0 )
             assert( solve_matrix[i].NumRows() == (n + 1)*tuple_list[i-1].length() + B.length() );
@@ -920,7 +920,7 @@ template<typename R>
 void dr<R>::matrix_J(Mat<R> &result, int64_t d)
 {
     if(verbose > 2)
-        cout<<"dr:::matrix_J(-, "<<d<<")"<<endl;
+        cout<<"dr::matrix_J(-, "<<d<<")"<<endl;
 
 
     //free storage and make 0 x 0
@@ -942,7 +942,7 @@ void dr<R>::matrix_J(Mat<R> &result, int64_t d)
                 result[tuple_dict[d][fit->first + v]][ i * tuple_list[d - 1].length() + j] = fit->first[i] * fit->second;
     }
     if(verbose > 2)
-        cout<<"dr:::matrix_J(-, "<<d<<") done"<<endl;
+        cout<<"dr::matrix_J(-, "<<d<<") done"<<endl;
 }
 
 
@@ -952,10 +952,10 @@ void dr<R>::solve_system(Vec<int64_t> &B, Mat<R> &Unom, R &Udenom, const Mat<R> 
 {
     timestamp_type time1, time2;
     get_timestamp(&time1);
-    ::solve_system_padic<R>(B, Unom, Udenom, T, initB, p, precision, fE);
+    ::solve_system_padic<R>(B, Unom, Udenom, T, initB, p, precision, fE, verbose);
     get_timestamp(&time2);
     if( verbose > 1)
-        printf("Time elapsed solve_system_padic (%lu x %lu matrix) %f s\n",(long unsigned)T.NumRows(), (long unsigned)T.NumCols(), timestamp_diff_in_seconds(time1,time2));
+        printf("dr::Time elapsed solve_system_padic (%lu x %lu matrix) %f s\n",(long unsigned)T.NumRows(), (long unsigned)T.NumCols(), timestamp_diff_in_seconds(time1,time2));
 }
 
 template <> inline void dr<ZZ>::solve_system(Vec<int64_t> &B, Mat<ZZ> &Unom, ZZ &Udenom, const Mat<ZZ> &T, const Vec<int64_t> &initB)
@@ -965,7 +965,7 @@ template <> inline void dr<ZZ>::solve_system(Vec<int64_t> &B, Mat<ZZ> &Unom, ZZ 
     ::solve_system(B, Unom, Udenom, T, initB);
     get_timestamp(&time2);
     if( verbose > 1)
-        printf("Time elapsed solve_system (%lu x %lu matrix) over ZZ %f s\n",(long unsigned)T.NumRows(), (long unsigned)T.NumCols(), timestamp_diff_in_seconds(time1,time2));
+        printf("dr::Time elapsed solve_system (%lu x %lu matrix) over ZZ %f s\n",(long unsigned)T.NumRows(), (long unsigned)T.NumCols(), timestamp_diff_in_seconds(time1,time2));
 }
 
 template<typename R>
@@ -976,7 +976,7 @@ void dr<R>::cokernel_intersection(Vec<int64_t>  &res, Mat<R> &T, Mat<R> &S)
     ::cokernel_intersection_local(res, T, S, p, fE);
     get_timestamp(&time2);
     if( verbose > 1)
-        printf("Time elapsed cokernel_intersection_local (%lu x %lu matrix) %f s\n",(long unsigned)T.NumRows(), (long unsigned)T.NumCols(), timestamp_diff_in_seconds(time1,time2));
+        printf("dr::Time elapsed cokernel_intersection_local (%lu x %lu matrix) %f s\n",(long unsigned)T.NumRows(), (long unsigned)T.NumCols(), timestamp_diff_in_seconds(time1,time2));
     }
 template<>
 inline void dr<ZZ>::cokernel_intersection(Vec<int64_t>  &res, Mat<ZZ> &T, Mat<ZZ> &S)
@@ -986,7 +986,7 @@ inline void dr<ZZ>::cokernel_intersection(Vec<int64_t>  &res, Mat<ZZ> &T, Mat<ZZ
     ::cokernel_intersection(res, T, S);
     get_timestamp(&time2);
     if( verbose > 1)
-        printf("Time elapsed cokernel_intersection (%lu x %lu matrix) over ZZ %f s\n",(long unsigned)T.NumRows(), (long unsigned)T.NumCols(), timestamp_diff_in_seconds(time1,time2));
+        printf("dr::Time elapsed cokernel_intersection (%lu x %lu matrix) over ZZ %f s\n",(long unsigned)T.NumRows(), (long unsigned)T.NumCols(), timestamp_diff_in_seconds(time1,time2));
 }
 
 
@@ -1602,7 +1602,7 @@ void dr<R>::compute_reduction_matrix_poly(const Vec<int64_t> &v)
     if( verbose > 1 )
     {
         cout << "dr::compute_reduction_poly(v = "<<v<<") done ";
-        printf("Time: CPU %.2f s, Wall: %.2f s\n", user_time, wall_time );
+        printf("dr::Time: CPU %.2f s, Wall: %.2f s\n", user_time, wall_time );
     }
 }
 
@@ -1763,7 +1763,7 @@ void dr<R>::reduce_vector_plain(Vec<R> &H, R &D, const Vec<int64_t> &u, const Ve
         wall_time = timestamp_diff_in_seconds(wtime1,wtime2);
         user_time = get_cpu_time() - user_time;
         cout << "dr::reduce_vector_plain(u = "<<u<<", v = "<<v<<") done";
-        printf(" Time: CPU %.2f s, Wall: %.2f s\n", user_time, wall_time );
+        printf("dr::Time: CPU %.2f s, Wall: %.2f s\n", user_time, wall_time );
     }
 }
 
@@ -1793,7 +1793,7 @@ void dr<R>::reduce_vector_finitediff_plain(Vec<R> &H,  R &D, const Vec<int64_t> 
         wall_time = timestamp_diff_in_seconds(wtime1,wtime2);
         user_time = get_cpu_time() - user_time;
         cout << "dr::reduce_vector_finitediff_plain(u = "<<u<<", v = "<<v<<") done";
-        printf(" Time: CPU %.2f s, Wall: %.2f s\n", user_time, wall_time );
+        printf("dr::Time: CPU %.2f s, Wall: %.2f s\n", user_time, wall_time );
     }
 }
 template<typename R>
@@ -1822,7 +1822,7 @@ void dr<R>::reduce_vector_finitediff_lift(Vec<R> &H,  R &D, const Vec<int64_t> &
         wall_time = timestamp_diff_in_seconds(wtime1,wtime2);
         user_time = get_cpu_time() - user_time;
         cout << "dr::reduce_vector_finitediff_lift(u = "<<u<<", v = "<<v<<") done";
-        printf(" Time: CPU %.2f s, Wall: %.2f s\n", user_time, wall_time );
+        printf("dr::Time: CPU %.2f s, Wall: %.2f s\n", user_time, wall_time );
     }
 }
 
@@ -2144,8 +2144,8 @@ void dr<R>::frob_monomial(Vec<R> &F, const Vec<int64_t> &w, int64_t N, int64_t m
 
     if(verbose > 0)
     {
-        cout <<"dr<R>::frob_monomial("<<w<<", "<<N<<") done!"<<endl;
-        printf("Time: CPU %.2f s, Wall: %.2f s\n", user_time, wall_time );
+        cout <<"dr::frob_monomial("<<w<<", "<<N<<") done!"<<endl;
+        printf("dr::Time: CPU %.2f s, Wall: %.2f s\n", user_time, wall_time );
     }
 
 }
