@@ -1,4 +1,4 @@
-// Copyright 2017 Edgar Costa
+// Copyright 2017-2023 Edgar Costa
 // See LICENSE file for license details.
 
 

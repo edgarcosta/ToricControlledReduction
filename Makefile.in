@@ -1,4 +1,4 @@
-#  Copyright (C)  2016-2017 Edgar Costa
+#  Copyright (C)  2016-2023 Edgar Costa
 #  See the file LICENSE for license details.
 
 MAKEFLAGS+=-j$(JOBS)
@@ -22,6 +22,7 @@ EXAMPLES = $(patsubst %.cpp, build/%.exe, $(EXAMPLE_SOURCES))
 
 TEST_SOURCES = $(wildcard test/*.cpp)
 TESTS = $(patsubst %.cpp, build/%.exe, $(TEST_SOURCES))
+RUNTESTS = $(patsubst build/%, run/%, $(TESTS))
 
 all: $(OBJS) test examples
 
@@ -33,17 +34,29 @@ examples: $(EXAMPLES)
 
 test: $(TESTS)
 
+tests: $(TESTS)
+
+check: $(TESTS) $(RUNTESTS)
+
 build/%.o: %.cpp $(HEADERS) | build_dirs
-	$(CXX) $(CXXFLAGS) $(INCS) -c $< -o $@;
+	@echo CXX $<
+	@$(CXX) $(CXXFLAGS) $(INCS) -c $< -o $@;
 
 $(TESTS) : %.exe : %.o $(OBJS)
-	$(CXX) $(CXXFLAGS) $(INCS) $^ -o $@ $(LIBS)
+	@echo CXX $<
+	@$(CXX) $(CXXFLAGS) $(INCS) $^ -o $@ $(LIBS)
+
+run/%: build/%
+	@echo RUN $<
+	@$<
 
 build/%.valgrind : %.cpp $(SOURCES)
-	$(CXX) $(CXXFLAGS) $(INCS) $^ -o $@ $(LIBS)
+	@echo CXX $<
+	@$(CXX) $(CXXFLAGS) $(INCS) $^ -o $@ $(LIBS)
 
 $(EXAMPLES) : %.exe : %.o $(OBJS)
-	$(CXX) $(CXXFLAGS) $(INCS) $^ -o $@ $(LIBS)
+	@echo CXX $<
+	@$(CXX) $(CXXFLAGS) $(INCS) $^ -o $@ $(LIBS)
 
 build_dirs: $(BUILD_DIRS)
 #	$(foreach dir, $(BUILD_DIRS), mkdir -p $(dir) || exit $$?;)
