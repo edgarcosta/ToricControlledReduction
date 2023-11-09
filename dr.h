@@ -1737,20 +1737,18 @@ void dr<R>::reduce_vector_plain(Vec<R> &H, R &D, const Vec<int64_t> &u, const Ve
     Vec<R> Gin, Gout;
     Gin = G;
     D = 1;
-    double ttime, utime;
-    ttime = 0;
-    for(int64_t l = k - 1; l > 0; l--)
-    {
+    // double ttime, utime;
+    // ttime = 0;
+    for(int64_t l = k - 1; l > 0; l--) {
         D *= Mden;
         R lpower = R(1);
         Gout = M[0] * Gin;
-        utime = get_cpu_time();
-        for(int64_t i = 1; i < n + 1; i++)
-        {
+        // utime = get_cpu_time();
+        for(int64_t i = 1; i < n + 1; i++) {
             lpower *= l;//lpower = l^i
             Gout += lpower * (M[i] * Gin);
         }
-        ttime += get_cpu_time() - utime;
+        // ttime += get_cpu_time() - utime;
         //taking advantage that \dim J_0 = 1
         lpower *= l; //lpower = l^(n+1)
         for(int64_t i = 0; i < cokernels_J_dimensions[n]; i++)
@@ -1760,8 +1758,7 @@ void dr<R>::reduce_vector_plain(Vec<R> &H, R &D, const Vec<int64_t> &u, const Ve
     }
     H = M[0] * Gin;
     D *= Mden;
-    if( verbose > 2)
-    {
+    if( verbose > 2) {
         get_timestamp(&wtime2);
         wall_time = timestamp_diff_in_seconds(wtime1,wtime2);
         user_time = get_cpu_time() - user_time;
