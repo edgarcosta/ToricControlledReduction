@@ -12,7 +12,7 @@ endef
 
 export
 
-HEADERS = $(patsubst %, %.h, $(SOURCE_DIRS))
+HEADERS = $(wildcard examples/*.h)
 SOURCES = $(wildcard $(patsubst %, %/*.cpp, $(SOURCE_DIRS)))
 OBJS = $(patsubst %.cpp, build/%.o, $(SOURCES))
 
