@@ -11,12 +11,12 @@
 
 typedef struct timeval timestamp_type;
 
-static void get_timestamp(timestamp_type *t)
+static inline void get_timestamp(timestamp_type *t)
 {
   gettimeofday(t, NULL);
 }
 
-static double timestamp_diff_in_seconds(timestamp_type start,
+static inline double timestamp_diff_in_seconds(timestamp_type start,
 timestamp_type end)
 {
   /* Perform the carry for the later subtraction by updating start. */
@@ -42,12 +42,12 @@ timestamp_type end)
 
 typedef struct timespec timestamp_type;
 
-static void get_timestamp(timestamp_type *t)
+static inline void get_timestamp(timestamp_type *t)
 {
   clock_gettime(CLOCK_REALTIME, t);
 }
 
-static double timestamp_diff_in_seconds(timestamp_type start, timestamp_type end)
+static inline double timestamp_diff_in_seconds(timestamp_type start, timestamp_type end)
 {
   struct timespec temp;
   if ((end.tv_nsec-start.tv_nsec)<0) {
