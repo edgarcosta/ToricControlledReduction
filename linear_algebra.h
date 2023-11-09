@@ -5,7 +5,10 @@
 #define LINEAR_ALGEBRA_H
 
 
+
+
 #include "tools.h"
+#include "timing.h"
 
 #include <cstdint>
 #include <assert.h>
@@ -435,19 +438,20 @@ inline void kernel(Mat<ZZ> &K,  Mat<ZZ> &T) {
 // When p is a prime power one should use solve_system_padic.
 
 template<typename R>
-void solve_system(Vec<int64_t> &B, Mat<R> &Unom, R &Udenom, const Mat<R> &T, const Vec<int64_t> &initB)
+void solve_system(Vec<int64_t> &B, Mat<R> &Unom, R &Udenom, const Mat<R> &T, const Vec<int64_t> &initB, const int64_t verbose=0)
 {
 
-    int64_t nrows, ncols;
-    int64_t rankS, rankT;
-    int64_t i, j;
+    timestamp_type time1, time2;
+    if( verbose )
+      get_timestamp(&time1);
+
     Mat<R> S_transpose, S;
     Mat<R> Y; // Y = pivot cols of T, plus J
     Mat<R> Z; // inverse of Y
     Vec<int64_t> pivots_T, pivots_S_transpose;
 
-    nrows = T.NumRows();
-    ncols = T.NumCols();
+    int64_t nrows = T.NumRows();
+    int64_t ncols = T.NumCols();
 
     // deal with a corner case
     if(ncols == 0)
@@ -455,8 +459,7 @@ void solve_system(Vec<int64_t> &B, Mat<R> &Unom, R &Udenom, const Mat<R> &T, con
         B.SetLength(nrows);
         clear(Unom);
         Unom.SetDims(nrows,nrows);
-        for(i = 0; i < nrows; i++)
-        {
+        for(int64_t i = 0; i < nrows; i++) {
             B[i] = i;
             Unom[i][i] = R(1);
         }
@@ -470,18 +473,35 @@ void solve_system(Vec<int64_t> &B, Mat<R> &Unom, R &Udenom, const Mat<R> &T, con
     {
         // Extends T so that e_i \in Image(T) for i \in initB
         S.SetDims(nrows, ncols + initB.length());
-        for(i = 0; i < nrows; i++)
-            for(j = 0; j < ncols; j++)
+        for(int64_t i = 0; i < nrows; i++)
+            for(int64_t j = 0; j < ncols; j++)
                 S[i][j] = T[i][j];
-        for(i = 0; i < initB.length(); i++)
+        for(int64_t i = 0; i < initB.length(); i++)
             S[ initB[i] ][ ncols + i] = R(1);
     }
 
     // Compute B
     // B = set of nonpivot rows of S + initB (without swapping rows)
+    if( verbose )
+      get_timestamp(&time1);
     transpose(S_transpose, S);
+    if( verbose > 0 ) {
+      get_timestamp(&time2);
+      printf("linear_algebra::transpose (%lu x %lu matrix): %f s\n",
+          (long unsigned)S.NumRows(),
+          (long unsigned)S.NumCols(),
+          timestamp_diff_in_seconds(time1, time2));
+      get_timestamp(&time1);
+    }
     pivot_columns(pivots_S_transpose, S_transpose);
-    rankS = pivots_S_transpose.length();
+    if( verbose > 0 ) {
+      get_timestamp(&time2);
+      printf("linear_algebra::pivot_columns (%lu x %lu matrix): %f s\n",
+          (long unsigned)S_transpose.NumRows(),
+          (long unsigned)S_transpose.NumCols(),
+          timestamp_diff_in_seconds(time1, time2));
+    }
+    int64_t rankS = pivots_S_transpose.length();
 
     // B = S.nonpivots() + initB;
     complement(B, nrows, pivots_S_transpose);
@@ -489,12 +509,22 @@ void solve_system(Vec<int64_t> &B, Mat<R> &Unom, R &Udenom, const Mat<R> &T, con
 
     sort(B.begin(), B.end());
 
-    for(i = 1; i < B.length(); i++)
+    for(int64_t i = 1; i < B.length(); i++)
         assert_print( B[i], !=, B[i-1]);
 
     //Compute the pivot cols of T
+    if( verbose )
+      get_timestamp(&time1);
     pivot_columns(pivots_T, T);
-    rankT = pivots_T.length();
+    if( verbose > 0 ) {
+      get_timestamp(&time2);
+      printf("linear_algebra::pivot_columns (%lu x %lu matrix): %f s\n",
+          (long unsigned)T.NumRows(),
+          (long unsigned)T.NumCols(),
+          timestamp_diff_in_seconds(time1, time2));
+      get_timestamp(&time1);
+    }
+    int64_t rankT = pivots_T.length();
     assert_print( rankS, ==, rankT + initB.length() ); //otherwise ei \in initB are not LI on K^m/im(T_K)
     assert_print( rankT + B.length(), ==, nrows );
 
@@ -505,17 +535,35 @@ void solve_system(Vec<int64_t> &B, Mat<R> &Unom, R &Udenom, const Mat<R> &T, con
     Y.SetDims(nrows, nrows);
 
     //copies pivot columns of T
-    for( i = 0; i < nrows; i++)
-        for( j = 0; j < rankT; j++)
+    for(int64_t i = 0; i < nrows; i++)
+        for(int64_t j = 0; j < rankT; j++)
             //not very cache friendly
             Y[i][j] = T[i][pivots_T[j]];
     // appends the columns corresponding to B
-    for( i = 0; i < B.length(); i++)
+    for(int64_t i = 0; i < B.length(); i++)
         Y[B[i]][i + rankT] = R(1);
+
+    if( verbose > 0 ) {
+      get_timestamp(&time2);
+      printf("linear_algebra::Y construction (%lu x %lu matrix): %f s\n",
+          (long unsigned)Y.NumRows(),
+          (long unsigned)Y.NumCols(),
+          timestamp_diff_in_seconds(time1, time2));
+      get_timestamp(&time1);
+    }
 
     // Z = Y.adjoint();
     // Udenom = Y.det()
     inverse(Udenom, Z, Y);
+
+    if( verbose > 0 ) {
+      get_timestamp(&time2);
+      printf("linear_algebra::Y inverse (%lu x %lu matrix): %f s\n",
+          (long unsigned)Y.NumRows(),
+          (long unsigned)Y.NumCols(),
+          timestamp_diff_in_seconds(time1, time2));
+      get_timestamp(&time1);
+    }
     //Recall
     // m = nrows
     // n = ncols
@@ -524,13 +572,21 @@ void solve_system(Vec<int64_t> &B, Mat<R> &Unom, R &Udenom, const Mat<R> &T, con
     clear(Unom);
     Unom.SetDims(ncols + B.length(), nrows);
 
-    for(i = 0; i < rankT; i++)
-        for(j = 0; j < nrows; j++)
+    for(int64_t i = 0; i < rankT; i++)
+        for(int64_t j = 0; j < nrows; j++)
             Unom[pivots_T[i]][j] = Z[i][j];
 
-    for(i = rankT; i < nrows; i++)
-        for(j = 0; j < nrows; j++ )
+    for(int64_t i = rankT; i < nrows; i++)
+        for(int64_t j = 0; j < nrows; j++ )
             Unom[ncols + i - rankT][j] = Z[i][j];
+    if( verbose > 0 ) {
+      get_timestamp(&time2);
+      printf("linear_algebra::Unom construction (%lu x %lu matrix): %f s\n",
+          (long unsigned)Unom.NumRows(),
+          (long unsigned)Unom.NumCols(),
+          timestamp_diff_in_seconds(time1, time2));
+      get_timestamp(&time1);
+    }
 }
 
 
@@ -638,22 +694,23 @@ void solve_system_padic2(Vec<int64_t> &B, Mat<R> &Unom, R &Udenom, const Mat<R> 
 //R = ZZ_p, zz_p. ZZ_pE, or zz_pE, where *_p::modulus = p^precision *_pE::modulus = f
 
 template<typename R>
-void solve_system_local(Vec<int64_t> &B,  Mat<R> &Unom, const Mat<R> &T, const Vec<int64_t> &initB, const int64_t p, const ZZX f = ZZX(0));
+void solve_system_local(Vec<int64_t> &B,  Mat<R> &Unom, const Mat<R> &T, const Vec<int64_t> &initB, const int64_t p, const ZZX f=ZZX(0), int64_t verbose=0);
 
 template<typename R>
-void solve_system_padic(Vec<int64_t> &B, Mat<R> &Unom, R &Udenom, const Mat<R> &T, const Vec<int64_t> &initB, const int64_t p, const int64_t precision, const ZZX f = ZZX(0))
+void solve_system_padic(Vec<int64_t> &B, Mat<R> &Unom, R &Udenom, const Mat<R> &T, const Vec<int64_t> &initB, const int64_t p, const int64_t precision, const ZZX f=ZZX(0), const int64_t verbose=0)
 {
-    int64_t nrows, ncols;
-    int64_t i, j;
+    timestamp_type time1, time2;
+    if( verbose )
+      get_timestamp(&time1);
 
-    nrows = T.NumRows();
-    ncols = T.NumCols();
+    int64_t nrows = T.NumRows();
+    int64_t ncols = T.NumCols();
+
     if(ncols == 0)
     {
         B.SetLength(nrows);
         Unom.SetDims(nrows,nrows);
-        for(i = 0; i < nrows; i++)
-        {
+        for(int64_t i = 0; i < nrows; i++) {
             B[i] = i;
             Unom[i][i] = R(1);
         }
@@ -662,29 +719,49 @@ void solve_system_padic(Vec<int64_t> &B, Mat<R> &Unom, R &Udenom, const Mat<R> &
     }
 
     Udenom = 1;
-    solve_system_local(B, Unom, T, initB, p, f);
+    solve_system_local(B, Unom, T, initB, p, f, verbose);
+
+    if( verbose > 0 ) {
+      get_timestamp(&time2);
+      printf("linear_algebra::solve_system_local (%lu x %lu matrix): %f s\n",(long unsigned)nrows, (long unsigned)ncols, timestamp_diff_in_seconds(time1, time2));
+      get_timestamp(&time1);
+    }
 
     Mat<R> X;
     //Compute X
     X.SetDims(nrows, ncols + B.length() );
-    for(i = 0; i < nrows; i++)
-        for(j = 0; j < ncols; j++)
+    for(int64_t i = 0; i < nrows; i++)
+        for(int64_t j = 0; j < ncols; j++)
             X[i][j] = T[i][j];
-    for(i = 0; i < B.length(); i++)
+    for(int64_t i = 0; i < B.length(); i++)
        X[B[i]][i+ncols] = R(1);
 
-    j = 1;
-    while( j < precision )
-    {
+    if( verbose > 0 ) {
+      get_timestamp(&time2);
+      printf("linear_algebra::Compute X (%lu x %lu + %lu matrix) %f s\n",(long unsigned)nrows, (long unsigned)ncols, (long unsigned)B.length(), timestamp_diff_in_seconds(time1,time2));
+      get_timestamp(&time1);
+    }
+
+    for(int64_t j=1; j < precision; j *= 2) {
         Unom = 2*Unom - Unom * (X * Unom);
-        j *= 2;
+        if( verbose > 0 ) {
+          get_timestamp(&time2);
+          printf("linear_algebra::Hensel lift %lu->%lu Unom * X * Unom (%lu x %lu x %lu matrix) %f s\n",
+              (long unsigned)j,
+              (long unsigned)(2*j),
+              (long unsigned)nrows,
+              (long unsigned)(ncols + B.length()),
+              (long unsigned)nrows,
+              timestamp_diff_in_seconds(time1,time2));
+          get_timestamp(&time1);
+        }
     }
 }
 
 
 //R = ZZ_p or zz_p
 template<typename R>
-void solve_system_local_lzz_p(Vec<int64_t> &B,  Mat<R> &Unom, const Mat<R> &T, const Vec<int64_t> &initB, const int64_t p, const ZZX f = ZZX(0))
+void solve_system_local_lzz_p(Vec<int64_t> &B,  Mat<R> &Unom, const Mat<R> &T, const Vec<int64_t> &initB, const int64_t p, const ZZX f=ZZX(0), const int64_t verbose=0)
 {
     //f = 0 or f = X
     assert_print( f == 0, or, IsX(f));
@@ -696,7 +773,7 @@ void solve_system_local_lzz_p(Vec<int64_t> &B,  Mat<R> &Unom, const Mat<R> &T, c
         zz_p Udenom;
         Mat<zz_p> U_Fp;
         Mat<zz_p> T_Fp = conv< Mat<zz_p> > (T_ZZ);
-        solve_system<zz_p>(B, U_Fp, Udenom, T_Fp, initB);
+        solve_system<zz_p>(B, U_Fp, Udenom, T_Fp, initB, verbose);
         assert_print(Udenom, ==, 1);
         U_ZZ = conv< Mat<ZZ> >(U_Fp);
     }
@@ -705,7 +782,7 @@ void solve_system_local_lzz_p(Vec<int64_t> &B,  Mat<R> &Unom, const Mat<R> &T, c
 
 //R = ZZ_pE or zz_pE
 template<typename R>
-void solve_system_local_lzz_pE(Vec<int64_t> &B,  Mat<R> &Unom, const Mat<R> &T, const Vec<int64_t> &initB, const int64_t p, const ZZX f = ZZX(0))
+void solve_system_local_lzz_pE(Vec<int64_t> &B,  Mat<R> &Unom, const Mat<R> &T, const Vec<int64_t> &initB, const int64_t p, const ZZX f=ZZX(0), const int64_t verbose=0)
 {
     assert_print( f, !=, 0);
     assert_print( IsX(f), ==, false);
@@ -721,7 +798,7 @@ void solve_system_local_lzz_pE(Vec<int64_t> &B,  Mat<R> &Unom, const Mat<R> &T, 
             Mat<zz_pE> U_Fq;
             Mat<zz_pE> T_Fq;
             T_Fq = conv< Mat<zz_pE> >(T_ZZX);
-            solve_system<zz_pE>(B, U_Fq, Udenom, T_Fq, initB);
+            solve_system<zz_pE>(B, U_Fq, Udenom, T_Fq, initB, verbose);
             assert_print(Udenom, ==, 1);
             U_ZZX = conv< Mat<ZZX> >(U_Fq);
         }
@@ -730,24 +807,24 @@ void solve_system_local_lzz_pE(Vec<int64_t> &B,  Mat<R> &Unom, const Mat<R> &T, 
 }
 
 template<>
-inline void solve_system_local(Vec<int64_t> &B,  Mat<zz_p> &Unom, const Mat<zz_p> &T, const Vec<int64_t> &initB, const int64_t p, const ZZX f)
+inline void solve_system_local(Vec<int64_t> &B,  Mat<zz_p> &Unom, const Mat<zz_p> &T, const Vec<int64_t> &initB, const int64_t p, const ZZX f, const int64_t verbose)
 {
-    solve_system_local_lzz_p(B, Unom, T, initB, p, f);
+    solve_system_local_lzz_p(B, Unom, T, initB, p, f, verbose);
 }
 template<>
-inline void solve_system_local(Vec<int64_t> &B,  Mat<ZZ_p> &Unom, const Mat<ZZ_p> &T, const Vec<int64_t> &initB, const int64_t p, const ZZX f)
+inline void solve_system_local(Vec<int64_t> &B,  Mat<ZZ_p> &Unom, const Mat<ZZ_p> &T, const Vec<int64_t> &initB, const int64_t p, const ZZX f, const int64_t verbose)
 {
-    solve_system_local_lzz_p(B, Unom, T, initB, p, f);
+    solve_system_local_lzz_p(B, Unom, T, initB, p, f, verbose);
 }
 template<>
-inline void solve_system_local(Vec<int64_t> &B,  Mat<zz_pE> &Unom, const Mat<zz_pE> &T, const Vec<int64_t> &initB, const int64_t p, const ZZX f)
+inline void solve_system_local(Vec<int64_t> &B,  Mat<zz_pE> &Unom, const Mat<zz_pE> &T, const Vec<int64_t> &initB, const int64_t p, const ZZX f, const int64_t verbose)
 {
-    solve_system_local_lzz_pE(B, Unom, T, initB, p, f);
+    solve_system_local_lzz_pE(B, Unom, T, initB, p, f, verbose);
 }
 template<>
-inline void solve_system_local(Vec<int64_t> &B,  Mat<ZZ_pE> &Unom, const Mat<ZZ_pE> &T, const Vec<int64_t> &initB, const int64_t p, const ZZX f)
+inline void solve_system_local(Vec<int64_t> &B,  Mat<ZZ_pE> &Unom, const Mat<ZZ_pE> &T, const Vec<int64_t> &initB, const int64_t p, const ZZX f, const int64_t verbose)
 {
-    solve_system_local_lzz_pE(B, Unom, T, initB, p, f);
+    solve_system_local_lzz_pE(B, Unom, T, initB, p, f, verbose);
 }
 
 
